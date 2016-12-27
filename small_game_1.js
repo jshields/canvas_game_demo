@@ -112,10 +112,66 @@ var boxBoxCollisionCheck = function (box1, box2) {
     }
     return ret;
 };
-var boxCircleCollisionCheck = function () {
-    //TODO
+var boxCircleCollisionCheck = function (box, circle) {
+    /*
+    // Distance from centers
+    var distX = Math.abs(circle.coords.x - (box.coords.x + box.w / 2));
+    var distY = Math.abs(circle.coords.y - (box.coords.y + box.h / 2));
+
+    // Too far apart to be colliding?
+    if (
+        // If too far away horizontally...
+        (distX > (box.w / 2 + circle.r)) ||
+        // or too far away vertically
+        (distY > (box.h / 2 + circle.r))
+        ) {
+        // then not colliding.
+        return false;
+    }
+    // Close enough to be colliding?
+    if (
+        // Right / Left check
+        (distX <= (box.w / 2)) ||
+        // Top / Bottom check
+        (distY <= (box.h / 2))
+        ) {
+        return true;
+    }
+    // On the corner?
+    //          x2    - x1
+    var dx = distX - (box.w / 2);
+    //          y2    - y1
+    var dy = distY - (box.h / 2);
+    // a^2 + b^2 = c^2
+    return (dx * dx + dy * dy <= (circle.r * circle.r));
+    */
+    /*
+    // From (0, 0) relative frame of reference, each point forms a hypotenuse.
+    // boxCircleDistHypot: From box to circle
+    // cornerHypot: Box corner
+    // Is the box corner in range of the circle?
+    var boxCircleDistHypot = new Coords(distX, distY);
+    var cornerHypot = new Coords(box.width / 2, box.height / 2);
+    var foo = distanceCheck(cornerHypot, boxCircleDistHypot);
+    return foo <= circle.radius;
+    */
+
+    // Clamp circle center coordinates to box coordinates
+    /*
+    If circle's X is min compared to right side of box,
+    and max compared to left side,
+    distX resolves to 0 and we're in the center.
+    */
+    //                    left,      inside   right
+    distX = circleX - Max(RectX, Min(CircleX, RectX + RectWidth));
+    //                    top        inside   bottom
+    distY = circleY - Max(RectY, Min(CircleY, RectY + RectHeight));
+
+    // Do a point check between the closest point on the rectangle from the circle's center
+    return pointCircleCollisionCheck(new Coords(), circle)
 };
 
+// TODO in a later project: broad phase and narrow phase collision detection
 
 /* Game objects */
 // Create the canvas
@@ -189,6 +245,7 @@ Game loop
 */
 // Pause and unpause
 var pause = function () {
+    //cancelAnimationFrame?
     running = false;
 };
 var unpause = function () {
@@ -233,6 +290,9 @@ var update = function (delta) {
         reset();
     }
     */
+
+
+    // TODO: prevent high speed objects from skipping through solids between frames
 };
 // Draw everything
 var render = function () {
