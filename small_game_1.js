@@ -9,10 +9,22 @@ var Coords = function (x, y) {
     this.y = y;
     return this;
 };
+/*
+TODO use classes in Simple Game 2.
+abstract GameObject = function (...) {
+    this.coords = new Coords(x, y);
+    this.size = ...;
+    this.color = new Color(...);
+    this.collisionCheck = ...;
+    this.draw = ...;
+    return this;
+};
+*/
 var Circle = function (x, y, rad, color) {
     this.coords = new Coords(x, y);
     this.radius = rad;
     this.color = color;
+
     this.collisionCheck = function (obj) {
         return circleCollisionCheck(obj, this)
     };
@@ -37,6 +49,8 @@ var Box = function (x, y, w, h, color) {
     this.height = h;
     this.color = color;
 
+    //this.collisionCheck
+
     this.draw = function (canvasContext2D) {
         // Set the current color to draw with
         canvasContext2D.fillStyle = this.color;
@@ -45,6 +59,15 @@ var Box = function (x, y, w, h, color) {
     };
     return this;
 };
+/*
+var Sprite = function () {
+    TODO in Simple Game 2
+    this.draw = function (canvasContext2D) {
+        canvasContext2D.drawImage(this.image, this.coords.x, this.coords.y);
+    };
+    return this;
+};
+*/
 // Common game calculations
 var distanceCheck = function (coords1, coords2) {
     // How far are two Coords instances from each other?
@@ -53,14 +76,24 @@ var distanceCheck = function (coords1, coords2) {
         Math.pow(coords1.y - coords2.y, 2)
     );
 };
-var circlePointCollisionCheck = function (obj, circle) {
-    // Is obj center point touching circle?
+var pointCircleCollisionCheck = function (coords, circle) {
+    // Is coords point touching circle?
     // Works for e.g. mouse click but not others
-    var distance = distanceCalc(obj.coords, circle.coords);
+    var distance = distanceCheck(coords, circle.coords);
     var radius = circle.radius;
     return (distance <= radius);
 };
-var boxCollisionCheck = function (box1, box2) {
+var circleCircleCollisionCheck = function (circle1, circle2) {
+    var ret = false;
+    var distance = distanceCheck(circle1.coords, circle2.coords);
+    if (distance < circle1.radius + circle2.radius) {
+        // Collision detected
+        console.log('circle circle collision');
+        ret = true;
+    }
+    return ret;
+};
+var boxBoxCollisionCheck = function (box1, box2) {
     var ret = false;
     // Look for gaps between the sides, relative to box1,
     // where the coords of a box is the upper left corner
@@ -79,6 +112,9 @@ var boxCollisionCheck = function (box1, box2) {
     }
     return ret;
 };
+var boxCircleCollisionCheck = function () {
+    //TODO
+};
 
 
 /* Game objects */
@@ -88,37 +124,23 @@ var ctx = canvas.getContext('2d');
 // canvas.visibility = "visible";
 document.body.appendChild(canvas);
 
-var readyElementObjects = function () {
-
+/*
+TODO in Simple Game 2
+var readyHtmlElementObjects = function () {
+    // DOM ready for game objects that source from Image(), etc.
+    // Should probably wait for canvas element to be ready?
 };
-// Background image
-var bgReady = false;
-var bgImage = new Image();
-bgImage.onload = function () {
-    bgReady = true;
-};
-bgImage.src = "img/background.jpg";
+*/
 
-// player image
-var playerReady = false;
-var playerImage = new Image();
-playerImage.onload = function () {
-    playerReady = true;
-};
-playerImage.src = "img/player.svg";
+var player = new Circle();
 
-// target image
-var targetReady = false;
-var targetImage = new Image();
-targetImage.onload = function () {
-    targetReady = true;
-};
-targetImage.src = "img/target.svg";
+var target = new Circle();
 
+var obstacle = new Box();
 
 // TODO
-var gameObjects = [player, target];
-var targetsHit = 0;
+var gameObjects = [player, target, obstacle];
+var score = 0;
 
 /*
 DOM event handling
@@ -165,6 +187,16 @@ addEventListener('keyup', function (e) {
 /*
 Game loop
 */
+// Pause and unpause
+var pause = function () {
+    running = false;
+};
+var unpause = function () {
+    running = true;
+    // Reset `lastTime` to prevent large delta times from being generated
+    lastTime = Date.now();
+    main();
+};
 // Reset the game when the player catches runs over a target
 var reset = function () {
     player.x = canvas.width / 2;
@@ -176,17 +208,18 @@ var reset = function () {
 };
 // Update game objects
 var update = function (delta) {
+    // checkPlayerInput();
     if (38 in keysDown) { // Player holding up
-        player.y -= player.speed * delta;
+        //player.y -= player.speed * delta;
     }
     if (40 in keysDown) { // Player holding down
-        player.y += player.speed * delta;
+        //player.y += player.speed * delta;
     }
     if (37 in keysDown) { // Player holding left
-        player.x -= player.speed * delta;
+        //player.x -= player.speed * delta;
     }
     if (39 in keysDown) { // Player holding right
-        player.x += player.speed * delta;
+        //player.x += player.speed * delta;
     }
     // Player touching target? TODO refactor
     /*
@@ -196,25 +229,14 @@ var update = function (delta) {
         && player.y <= (target.y + 32)
         && target.y <= (player.y + 32)
     ) {
-        ++targetsHit;
+        ++score;
         reset();
     }
     */
 };
 // Draw everything
 var render = function () {
-    if (bgReady) {
-        ctx.drawImage(bgImage, 0, 0);
-    }
 
-    if (playerReady) {
-        ctx.drawImage(playerImage, player.x, player.y);
-    }
-
-    if (targetReady) {
-        ctx.drawImage(targetImage, target.x, target.y);
-    }
-    
     // TODO call `draw` method on all `gameObjects`
 
     // Score
@@ -222,13 +244,16 @@ var render = function () {
     ctx.font = "18px Arial";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText("targets hit: " + targetsHit, 373, 8);
+    ctx.fillText("score (targets hit - obstacles hit): " + score, 373, 8);
 };
 // The main game loop
 var main = function () {
+    if (!running) {
+        return;
+    }
     /*
     Calculate delta time, converting milliseconds to seconds.
-    Therefore, speed units are in seconds.
+    Speed units are in pixels per second.
     */
     var currentTime = Date.now();
     var deltaTime = (currentTime - lastTime) / 1000;
@@ -244,6 +269,7 @@ var main = function () {
     requestAnimationFrame(main);
 };
 // Begin
+var running = true;
 var lastTime = Date.now();
 reset();
 main();
