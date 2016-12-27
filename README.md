@@ -11,3 +11,5 @@ creating a simple game that is minimalist in terms setup, dependencies, art, and
 The finished product should function and be available online.
 
 Disclaimer: This project is meant for educational purposes, not to actually be a fun game.
+
+Only expected to run in modern browsers that have good feature support, specifically Chrome and Firefox.

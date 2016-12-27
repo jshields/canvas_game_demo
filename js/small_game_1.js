@@ -1,7 +1,7 @@
 'use strict';
 
 /* Object classes and helper functions */
-var color = function (r, g, b) {
+var rgbColor = function (r, g, b) {
     // color string as accepted by `CanvasRenderingContext2D.fillStyle`
     return 'rgb(' + r + ',' + g + ',' + b + ')';
 };
@@ -9,7 +9,7 @@ var randColor = function () {
     var r = Math.floor(Math.random() * 256),
         g = Math.floor(Math.random() * 256),
         b = Math.floor(Math.random() * 256);
-    return color(r, g, b);
+    return rgbColor(r, g, b);
 };
 
 var Coords = function (x, y) {
@@ -17,11 +17,18 @@ var Coords = function (x, y) {
     this.y = y;
     return this;
 };
+function randCoordsInBounds(canvas, padding) {
+    // random canvas coords, padding to prevent partial offscreen rendering
+    var randX = (padding + (Math.random() * (canvas.width - (2 * padding))));
+    var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
+    return new Coords(randX, randY);
+};
+
 function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
 };
 /*
-TODO use classes in Simple Game 2.
+TODO use classes in Small Game 2.
 abstract GameObject = function (...) {
     this.coords = new Coords(x, y);
     this.size = ...;
@@ -34,6 +41,7 @@ abstract GameObject = function (...) {
 var Circle = function (x, y, rad, borderColor, bgColor) {
     this.coords = new Coords(x, y);
     this.radius = rad;
+    this.borderColor = borderColor;
     this.bgColor = bgColor;
 
     // TODO check the shape type of the object checking against,
@@ -41,40 +49,45 @@ var Circle = function (x, y, rad, borderColor, bgColor) {
     //this.collisionCheck = ...;
 
     this.draw = function (canvasContext2D) {
-        // Set the current colors to draw with
-        canvasContext2D.strokeStyle = this.borderColor
+        canvasContext2D.strokeStyle = this.borderColor;
         canvasContext2D.fillStyle = this.bgColor;
-        // Draw this
         canvasContext2D.beginPath();
+
         canvasContext2D.arc(
             this.coords.x, this.coords.y, this.radius,
             // 0 degrees to 360 degrees, in radians
             0, 2 * Math.PI
         );
+
         canvasContext2D.stroke();
         canvasContext2D.fill();
     };
     return this;
 };
-var Box = function (x, y, w, h, color) {
+var Box = function (x, y, w, h, borderColor, bgColor) {
     this.coords = new Coords(x, y);
     this.width = w;
     this.height = h;
-    this.color = color;
+    this.borderColor = borderColor;
+    this.bgColor = bgColor;
 
     //this.collisionCheck
 
     this.draw = function (canvasContext2D) {
-        // Set the current color to draw with
-        canvasContext2D.fillStyle = this.color;
-        // Draw this
-        canvasContext2D.fillRect(this.coords.x, this.coords.y, this.w, this.h); 
+        canvasContext2D.strokeStyle = this.borderColor;
+        canvasContext2D.fillStyle = this.bgColor;
+        canvasContext2D.beginPath();
+
+        canvasContext2D.rect(this.coords.x, this.coords.y, this.width, this.height);
+
+        canvasContext2D.stroke();
+        canvasContext2D.fill();
     };
     return this;
 };
 /*
 var Sprite = function () {
-    TODO in Simple Game 2
+    TODO in Small Game 2
     this.draw = function (canvasContext2D) {
         canvasContext2D.drawImage(this.image, this.coords.x, this.coords.y);
     };
@@ -136,39 +149,23 @@ var boxCircleCollisionCheck = function (box, circle) {
 };
 // TODO in a later project: broad phase and narrow phase collision detection
 
-
 /*
 DOM event handling
 */
 // Handle click state tracking
 var clicked = false;
 var mouseX, mouseY;
-addEventListener("touchstart", function (e) {
-    mouseX = e.pageX;
-    mouseY = e.pageY;
-    clicked = true;
-}, false);
-
-var mouseX, mouseY;
-addEventListener("touchend", function (e) {
-    mouseX = e.pageX;
-    mouseY = e.pageY;
-    clicked = false;
-}, false);
-
-var mouseX, mouseY;
 addEventListener("mousedown", function (e) {
     mouseX = e.pageX;
     mouseY = e.pageY;
     clicked = true;
 }, false);
-
-var mouseX, mouseY;
 addEventListener("mouseup", function (e) {
     mouseX = e.pageX;
     mouseY = e.pageY;
     clicked = false;
 }, false);
+
 // Handle keyboard state tracking
 var keysDown = {};
 addEventListener('keydown', function (e) {
@@ -181,13 +178,25 @@ addEventListener('keyup', function (e) {
 
 /* Game objects */
 // Create the canvas
+// TODO properly scale canvas to device resolution:
+// https://www.html5rocks.com/en/tutorials/canvas/hidpi/
+// http://stackoverflow.com/a/26154753/3538313
+var resolution = new Coords(1024, 768);
 var canvas = document.createElement('canvas');
-var ctx = canvas.getContext('2d');
-// canvas.visibility = "visible";
-document.body.appendChild(canvas);
+canvas.innerText = 'Your browser does not support the canvas element.';
+canvas.width = resolution.x;
+canvas.height = resolution.y;
+// Opaque 2D context without alpha channel greatly improves text rendering
+// http://blogs.adobe.com/webplatform/2014/04/01/new-canvas-features/
+var ctx = canvas.getContext('2d', {'alpha': false});
+
+window.onload = function () {
+    document.body.appendChild(canvas);
+};
+
 
 /*
-TODO in Simple Game 2
+TODO in Small Game 2
 var readyHtmlElementObjects = function () {
     // DOM ready for game objects that source from Image(), etc.
     // Should probably wait for canvas element to be ready?
@@ -195,9 +204,7 @@ var readyHtmlElementObjects = function () {
 */
 
 var player;
-
 var target;
-
 var obstacle;
 
 // TODO
@@ -223,22 +230,20 @@ var reset = function () {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     player = new Circle(
-        canvas.width / 2, canvas.height / 2, 10,
+        canvas.width / 2, canvas.height / 2, 32,
         '#000', randColor()
     );
+    player.speed = 256;
 
-    /*
-    target = new Circle();
-    obstacle; = new Box();
+    target = new Circle(
+        null, null, 16,
+        '#000', '#0f0'
+    );
+    target.coords = randCoordsInBounds(canvas, 32);
 
-    // Spawn a target randomly,
-    // at least 32px in from the edge of the canvas
-    target.coords.x = 32 + (Math.random() * (canvas.width - 64));
-    target.coords.y = 32 + (Math.random() * (canvas.height - 64));
-
-    obstacle.coords.x = 32 + (Math.random() * (canvas.width - 64));
-    obstacle.coords.y = 32 + (Math.random() * (canvas.height - 64));
-    */
+    obstacle = new Box(null, null, 128, 128, '#000', '#f00');
+    obstacle.coords = randCoordsInBounds(canvas, 64);
+    
     // If the obstacle spawned on another object, respawn the obstacle
     //TODO if (boxCircleCollisionCheck(obstacle, )) {}
 
@@ -247,43 +252,56 @@ var reset = function () {
 var update = function (delta) {
     // checkPlayerInput();
     if (38 in keysDown) { // Player holding up
-        //player.y -= player.speed * delta;
+        player.coords.y -= player.speed * delta;
     }
     if (40 in keysDown) { // Player holding down
-        //player.y += player.speed * delta;
+        player.coords.y += player.speed * delta;
     }
     if (37 in keysDown) { // Player holding left
-        //player.x -= player.speed * delta;
+        player.coords.x -= player.speed * delta;
     }
     if (39 in keysDown) { // Player holding right
-        //player.x += player.speed * delta;
+        player.coords.x += player.speed * delta;
     }
-    // Player touching target? TODO refactor
-    
-    /*if (circleCircleCollisionCheck(target, player)) {
+    // TODO prevent double speed from pressing 2 keys at once
+
+    if (circleCircleCollisionCheck(target, player)) {
         ++score;
         reset();
-    }*/
-
-    //if (boxCircleCollisionCheck(obstacle, player))
-
+    }
+    if (boxCircleCollisionCheck(obstacle, player)) {
+        --score;
+        reset();
+    }
 
     // TODO: prevent high speed objects from skipping through solids between frames
 };
 // Draw everything
 var render = function () {
-    // TODO loop through to call `draw` method on all `gameObjects`
+    // TODO loop through to call `draw` method on all `gameObjects` with `ctx` passed
 
-    player.draw();
+    // CSS no longer works for backgroud with alpha off,
+    // Assumes opaque black background
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    player.draw(ctx);
+    target.draw(ctx);
+    obstacle.draw(ctx);
 
     // Score
-    // TODO is it possible to use CSS for this?
-    ctx.font = "18px Arial";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText("score (targets hit - obstacles hit): " + score, 373, 8);
+    ctx.fillStyle = '#000';
+    ctx.strokeStyle = '#000';
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    // TODO text needs antialiasing
+    var textArgs = ['score: ' + score, 16, 16];
+    ctx.fillText.apply(ctx, textArgs);
+    //ctx.strokeText.apply(ctx, textArgs);
 };
 // The main game loop
+// TODO in another project: splash screen with instructions
 var main = function () {
     if (!running) {
         return;
@@ -302,7 +320,6 @@ var main = function () {
     lastTime = currentTime;
 
     // Call `main` again when the next frame is ready.
-    // Not bothering with cross-browser support.
     requestAnimationFrame(main);
 };
 // Begin

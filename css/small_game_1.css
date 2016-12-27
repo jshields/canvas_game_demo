@@ -1,0 +1,9 @@
+body {
+    background-color: #000;
+}
+
+.instructions {
+    color: #fff;
+    border: 1px solid #555;
+    float: right;
+}
