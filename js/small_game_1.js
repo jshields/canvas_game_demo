@@ -114,7 +114,6 @@ var circleCircleCollisionCheck = function (circle1, circle2) {
     var distance = distanceCheck(circle1.coords, circle2.coords);
     if (distance < circle1.radius + circle2.radius) {
         // Collision detected
-        console.log('circle circle collision');
         ret = true;
     }
     return ret;
@@ -141,8 +140,8 @@ var boxBoxCollisionCheck = function (box1, box2) {
 var boxCircleCollisionCheck = function (box, circle) {
     // Find the closest point on the rectangle to the circle.
     // Clamp circle center coordinates to box coordinates.
-    var closestX = clamp(circle.x, box.coords.x, box.coords.x + box.width);
-    var closestY = clamp(circle.y, box.coords.y, box.coords.y + box.height);
+    var closestX = clamp(circle.coords.x, box.coords.x, box.coords.x + box.width);
+    var closestY = clamp(circle.coords.y, box.coords.y, box.coords.y + box.height);
 
     // Do a collision check between the closest point and circle
     return pointCircleCollisionCheck(new Coords(closestX, closestY), circle)
@@ -244,8 +243,8 @@ var reset = function () {
     obstacle = new Box(null, null, 128, 128, '#000', '#f00');
     obstacle.coords = randCoordsInBounds(canvas, 64);
     
-    // If the obstacle spawned on another object, respawn the obstacle
-    //TODO if (boxCircleCollisionCheck(obstacle, )) {}
+    // TODO later: If objects spawn on top of each other, respawn them
+    // if (boxCircleCollisionCheck(obstacle, )) {}
 
 };
 // Update game objects

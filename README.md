@@ -1,8 +1,6 @@
 Small Game 1
 ============
 
-Work in Progress.
-
 A small game release.
 This is a web based project using the HTML5 Canvas API and vanilla JavaScript.
 
