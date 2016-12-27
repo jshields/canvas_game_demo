@@ -9,6 +9,9 @@ var Coords = function (x, y) {
     this.y = y;
     return this;
 };
+function clamp(val, min, max) {
+    return val < min ? min : val > max ? max : val;
+};
 /*
 TODO use classes in Simple Game 2.
 abstract GameObject = function (...) {
@@ -156,19 +159,25 @@ var boxCircleCollisionCheck = function (box, circle) {
     return foo <= circle.radius;
     */
 
-    // Clamp circle center coordinates to box coordinates
+    // Find the closest point on the rectangle to the circle.
+    // Clamp circle center coordinates to box coordinates.
     /*
     If circle's X is min compared to right side of box,
     and max compared to left side,
-    distX resolves to 0 and we're in the center.
+    we're somewhere inside the box,
+    and distX resolves to 0.
     */
-    //                    left,      inside   right
-    distX = circleX - Max(RectX, Min(CircleX, RectX + RectWidth));
-    //                    top        inside   bottom
-    distY = circleY - Max(RectY, Min(CircleY, RectY + RectHeight));
+    //                     left              inside    right
+    //var dX = circle.x - Max(box.coords.x, Min(circle.x, box.coords.x + box.width));
+    //                     top               inside    bottom
+    //var dY = circle.y - Max(box.coords.y, Min(circle.y, box.coords.y + box.height));
+    //return (DeltaX * DeltaX + DeltaY * DeltaY) < (CircleRadius * CircleRadius);
+
+    var closestX = clamp(circle.x, box.coords.x, box.coords.x + box.width);
+    var closestY = clamp(circle.y, box.coords.y, box.coords.y + box.height);
 
     // Do a point check between the closest point on the rectangle from the circle's center
-    return pointCircleCollisionCheck(new Coords(), circle)
+    return pointCircleCollisionCheck(new Coords(closestX, closestY), circle)
 };
 
 // TODO in a later project: broad phase and narrow phase collision detection
