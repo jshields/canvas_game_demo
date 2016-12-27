@@ -1,9 +1,17 @@
 'use strict';
 
 /* Object classes and helper functions */
-var Color = function (r, g, b) {
+var color = function (r, g, b) {
+    // color string as accepted by `CanvasRenderingContext2D.fillStyle`
     return 'rgb(' + r + ',' + g + ',' + b + ')';
 };
+var randColor = function () {
+    var r = Math.floor(Math.random() * 256),
+        g = Math.floor(Math.random() * 256),
+        b = Math.floor(Math.random() * 256);
+    return color(r, g, b);
+};
+
 var Coords = function (x, y) {
     this.x = x;
     this.y = y;
@@ -23,18 +31,19 @@ abstract GameObject = function (...) {
     return this;
 };
 */
-var Circle = function (x, y, rad, color) {
+var Circle = function (x, y, rad, borderColor, bgColor) {
     this.coords = new Coords(x, y);
     this.radius = rad;
-    this.color = color;
+    this.bgColor = bgColor;
 
-    this.collisionCheck = function (obj) {
-        return circleCollisionCheck(obj, this)
-    };
+    // TODO check the shape type of the object checking against,
+    // and then call the appropriate collision check
+    //this.collisionCheck = ...;
 
     this.draw = function (canvasContext2D) {
-        // Set the current color to draw with
-        canvasContext2D.fillStyle = this.color;
+        // Set the current colors to draw with
+        canvasContext2D.strokeStyle = this.borderColor
+        canvasContext2D.fillStyle = this.bgColor;
         // Draw this
         canvasContext2D.beginPath();
         canvasContext2D.arc(
@@ -42,6 +51,7 @@ var Circle = function (x, y, rad, color) {
             // 0 degrees to 360 degrees, in radians
             0, 2 * Math.PI
         );
+        canvasContext2D.stroke();
         canvasContext2D.fill();
     };
     return this;
@@ -116,96 +126,16 @@ var boxBoxCollisionCheck = function (box1, box2) {
     return ret;
 };
 var boxCircleCollisionCheck = function (box, circle) {
-    /*
-    // Distance from centers
-    var distX = Math.abs(circle.coords.x - (box.coords.x + box.w / 2));
-    var distY = Math.abs(circle.coords.y - (box.coords.y + box.h / 2));
-
-    // Too far apart to be colliding?
-    if (
-        // If too far away horizontally...
-        (distX > (box.w / 2 + circle.r)) ||
-        // or too far away vertically
-        (distY > (box.h / 2 + circle.r))
-        ) {
-        // then not colliding.
-        return false;
-    }
-    // Close enough to be colliding?
-    if (
-        // Right / Left check
-        (distX <= (box.w / 2)) ||
-        // Top / Bottom check
-        (distY <= (box.h / 2))
-        ) {
-        return true;
-    }
-    // On the corner?
-    //          x2    - x1
-    var dx = distX - (box.w / 2);
-    //          y2    - y1
-    var dy = distY - (box.h / 2);
-    // a^2 + b^2 = c^2
-    return (dx * dx + dy * dy <= (circle.r * circle.r));
-    */
-    /*
-    // From (0, 0) relative frame of reference, each point forms a hypotenuse.
-    // boxCircleDistHypot: From box to circle
-    // cornerHypot: Box corner
-    // Is the box corner in range of the circle?
-    var boxCircleDistHypot = new Coords(distX, distY);
-    var cornerHypot = new Coords(box.width / 2, box.height / 2);
-    var foo = distanceCheck(cornerHypot, boxCircleDistHypot);
-    return foo <= circle.radius;
-    */
-
     // Find the closest point on the rectangle to the circle.
     // Clamp circle center coordinates to box coordinates.
-    /*
-    If circle's X is min compared to right side of box,
-    and max compared to left side,
-    we're somewhere inside the box,
-    and distX resolves to 0.
-    */
-    //                     left              inside    right
-    //var dX = circle.x - Max(box.coords.x, Min(circle.x, box.coords.x + box.width));
-    //                     top               inside    bottom
-    //var dY = circle.y - Max(box.coords.y, Min(circle.y, box.coords.y + box.height));
-    //return (DeltaX * DeltaX + DeltaY * DeltaY) < (CircleRadius * CircleRadius);
-
     var closestX = clamp(circle.x, box.coords.x, box.coords.x + box.width);
     var closestY = clamp(circle.y, box.coords.y, box.coords.y + box.height);
 
-    // Do a point check between the closest point on the rectangle from the circle's center
+    // Do a collision check between the closest point and circle
     return pointCircleCollisionCheck(new Coords(closestX, closestY), circle)
 };
-
 // TODO in a later project: broad phase and narrow phase collision detection
 
-/* Game objects */
-// Create the canvas
-var canvas = document.createElement('canvas');
-var ctx = canvas.getContext('2d');
-// canvas.visibility = "visible";
-document.body.appendChild(canvas);
-
-/*
-TODO in Simple Game 2
-var readyHtmlElementObjects = function () {
-    // DOM ready for game objects that source from Image(), etc.
-    // Should probably wait for canvas element to be ready?
-};
-*/
-
-var player = new Circle();
-
-var target = new Circle();
-
-var obstacle = new Box();
-
-// TODO
-var gameObjects = [player, target, obstacle];
-var score = 0;
 
 /*
 DOM event handling
@@ -249,6 +179,31 @@ addEventListener('keyup', function (e) {
 }, false);
 
 
+/* Game objects */
+// Create the canvas
+var canvas = document.createElement('canvas');
+var ctx = canvas.getContext('2d');
+// canvas.visibility = "visible";
+document.body.appendChild(canvas);
+
+/*
+TODO in Simple Game 2
+var readyHtmlElementObjects = function () {
+    // DOM ready for game objects that source from Image(), etc.
+    // Should probably wait for canvas element to be ready?
+};
+*/
+
+var player;
+
+var target;
+
+var obstacle;
+
+// TODO
+var gameObjects = [player, target, obstacle];
+var score = 0;
+
 /*
 Game loop
 */
@@ -265,12 +220,28 @@ var unpause = function () {
 };
 // Reset the game when the player catches runs over a target
 var reset = function () {
-    player.x = canvas.width / 2;
-    player.y = canvas.height / 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Throw a new target somewhere on the screen randomly
-    target.x = 32 + (Math.random() * (canvas.width - 64));
-    target.y = 32 + (Math.random() * (canvas.height - 64));
+    player = new Circle(
+        canvas.width / 2, canvas.height / 2, 10,
+        '#000', randColor()
+    );
+
+    /*
+    target = new Circle();
+    obstacle; = new Box();
+
+    // Spawn a target randomly,
+    // at least 32px in from the edge of the canvas
+    target.coords.x = 32 + (Math.random() * (canvas.width - 64));
+    target.coords.y = 32 + (Math.random() * (canvas.height - 64));
+
+    obstacle.coords.x = 32 + (Math.random() * (canvas.width - 64));
+    obstacle.coords.y = 32 + (Math.random() * (canvas.height - 64));
+    */
+    // If the obstacle spawned on another object, respawn the obstacle
+    //TODO if (boxCircleCollisionCheck(obstacle, )) {}
+
 };
 // Update game objects
 var update = function (delta) {
@@ -288,25 +259,22 @@ var update = function (delta) {
         //player.x += player.speed * delta;
     }
     // Player touching target? TODO refactor
-    /*
-    if (
-        player.x <= (target.x + 32)
-        && target.x <= (player.x + 32)
-        && player.y <= (target.y + 32)
-        && target.y <= (player.y + 32)
-    ) {
+    
+    /*if (circleCircleCollisionCheck(target, player)) {
         ++score;
         reset();
-    }
-    */
+    }*/
+
+    //if (boxCircleCollisionCheck(obstacle, player))
 
 
     // TODO: prevent high speed objects from skipping through solids between frames
 };
 // Draw everything
 var render = function () {
+    // TODO loop through to call `draw` method on all `gameObjects`
 
-    // TODO call `draw` method on all `gameObjects`
+    player.draw();
 
     // Score
     // TODO is it possible to use CSS for this?
