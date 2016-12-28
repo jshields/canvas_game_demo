@@ -249,9 +249,8 @@ var reset = function () {
     );
     target.coords = randCoordsInBounds(canvas, 32);
 
-    // FIXME: rectangle spawns partially offscreen sometimes
     obstacle = new Box(null, null, 128, 128, '#000', '#f00');
-    obstacle.coords = randCoordsInBounds(canvas, 64);
+    obstacle.coords = randCoordsInBounds(canvas, 128);
 
     // TODO later: If objects spawn on top of each other, respawn them
     // if (boxCircleCollisionCheck(obstacle, )) {}
