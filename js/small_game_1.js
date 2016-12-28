@@ -214,6 +214,14 @@ var score = 0;
 Game loop
 */
 // Pause and unpause
+// TODO
+/*
+window.addEventListener('focus', function() {
+    unpause();
+});
+window.addEventListener('blur', function() {
+    pause();
+});
 var pause = function () {
     //cancelAnimationFrame?
     running = false;
@@ -224,6 +232,7 @@ var unpause = function () {
     lastTime = Date.now();
     main();
 };
+*/
 // Reset the game when the player catches runs over a target
 var reset = function () {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -240,9 +249,10 @@ var reset = function () {
     );
     target.coords = randCoordsInBounds(canvas, 32);
 
+    // FIXME: rectangle spawns partially offscreen sometimes
     obstacle = new Box(null, null, 128, 128, '#000', '#f00');
     obstacle.coords = randCoordsInBounds(canvas, 64);
-    
+
     // TODO later: If objects spawn on top of each other, respawn them
     // if (boxCircleCollisionCheck(obstacle, )) {}
 
