@@ -1,16 +1,15 @@
 'use strict';
 
-/* Object classes and helper functions */
-var rgbColor = function (r, g, b) {
+function rgbColor(r, g, b) {
     // color string as accepted by `CanvasRenderingContext2D.fillStyle`
     return 'rgb(' + r + ',' + g + ',' + b + ')';
-};
-var randColor = function () {
+}
+function randColor() {
     var r = Math.floor(Math.random() * 256),
         g = Math.floor(Math.random() * 256),
         b = Math.floor(Math.random() * 256);
     return rgbColor(r, g, b);
-};
+}
 
 var Coords = function (x, y) {
     this.x = x;
@@ -22,94 +21,84 @@ function randCoordsInBounds(canvas, padding) {
     var randX = (padding + (Math.random() * (canvas.width - (2 * padding))));
     var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
     return new Coords(randX, randY);
-};
-
+}
 function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
-};
-/*
-TODO use classes or chain constructors?
-abstract GameObject = function (...) {
+}
+
+var GameObject = function (x, y, borderColor, bgColor) {
     this.coords = new Coords(x, y);
-    this.size = ...;
-    this.color = new Color(...);
-    this.collisionCheck = ...;
-    this.draw = ...;
-    return this;
-};
-*/
-var Circle = function (x, y, rad, borderColor, bgColor) {
-    this.coords = new Coords(x, y);
-    this.radius = rad;
     this.borderColor = borderColor;
     this.bgColor = bgColor;
+};
+var GameObjectPrototype = GameObject.prototype = {
+    drawGraphic: function () {
+        console.error('must implement on child');
+    },
+    draw: function () {
+        ctx.strokeStyle = this.borderColor;
+        ctx.fillStyle = this.bgColor;
+        ctx.beginPath();
 
-    // TODO check the shape type of the object checking against,
-    // and then call the appropriate collision check
-    //this.collisionCheck = ...;
+        this.drawGraphic();
 
-    this.draw = function (canvasContext2D) {
-        canvasContext2D.strokeStyle = this.borderColor;
-        canvasContext2D.fillStyle = this.bgColor;
-        canvasContext2D.beginPath();
+        ctx.stroke();
+        ctx.fill();
+    },
+};
 
-        canvasContext2D.arc(
-            this.coords.x, this.coords.y, this.radius,
-            // 0 degrees to 360 degrees, in radians
-            0, 2 * Math.PI
-        );
+var Circle = function (x, y, rad, borderColor, bgColor) {
+    GameObject.call(this, x, y, borderColor, bgColor);
+    this.radius = rad;
 
-        canvasContext2D.stroke();
-        canvasContext2D.fill();
-    };
     return this;
 };
+Circle.prototype = Object.create(GameObjectPrototype);
+Circle.prototype.drawGraphic = function () {
+    ctx.arc(
+        this.coords.x, this.coords.y, this.radius,
+        // 0 degrees to 360 degrees, in radians
+        0, 2 * Math.PI
+    );
+};
+
 var Box = function (x, y, w, h, borderColor, bgColor) {
-    this.coords = new Coords(x, y);
+    GameObject.call(this, x, y, borderColor, bgColor);
     this.width = w;
     this.height = h;
-    this.borderColor = borderColor;
-    this.bgColor = bgColor;
 
-    //this.collisionCheck
-
-    this.draw = function (canvasContext2D) {
-        canvasContext2D.strokeStyle = this.borderColor;
-        canvasContext2D.fillStyle = this.bgColor;
-        canvasContext2D.beginPath();
-
-        canvasContext2D.rect(this.coords.x, this.coords.y, this.width, this.height);
-
-        canvasContext2D.stroke();
-        canvasContext2D.fill();
-    };
     return this;
 };
+Box.prototype = Object.create(GameObjectPrototype);
+Box.prototype.drawGraphic = function () {
+    ctx.rect(this.coords.x, this.coords.y, this.width, this.height);
+};
+
 /*
 var Sprite = function () {
     TODO
-    this.draw = function (canvasContext2D) {
-        canvasContext2D.drawImage(this.image, this.coords.x, this.coords.y);
+    this.draw = function (ctx) {
+        ctx.drawImage(this.image, this.coords.x, this.coords.y);
     };
     return this;
 };
 */
 // Common game calculations
-var distanceCheck = function (coords1, coords2) {
+function distanceCheck(coords1, coords2) {
     // How far are two Coords instances from each other?
     return Math.sqrt(
         Math.pow(coords1.x - coords2.x, 2) +
         Math.pow(coords1.y - coords2.y, 2)
     );
-};
-var pointCircleCollisionCheck = function (coords, circle) {
+}
+function pointCircleCollisionCheck(coords, circle) {
     // Is coords point touching circle?
     // Works for e.g. mouse click but not others
     var distance = distanceCheck(coords, circle.coords);
     var radius = circle.radius;
     return (distance <= radius);
 };
-var circleCircleCollisionCheck = function (circle1, circle2) {
+function circleCircleCollisionCheck(circle1, circle2) {
     var ret = false;
     var distance = distanceCheck(circle1.coords, circle2.coords);
     if (distance < circle1.radius + circle2.radius) {
@@ -118,7 +107,7 @@ var circleCircleCollisionCheck = function (circle1, circle2) {
     }
     return ret;
 };
-var boxBoxCollisionCheck = function (box1, box2) {
+function boxBoxCollisionCheck(box1, box2) {
     var ret = false;
     // Look for gaps between the sides, relative to box1,
     // where the coords of a box is the upper left corner
@@ -249,6 +238,7 @@ var handlePlayerInput = function (delta) {
         // We will have to manually remove bullets that have been alive too long,
         // in `update`
         // FIXME: pausing game expires bullets
+        // remove when off screen
         bullet.timecreated = Date.now();
         bullet.expiredCheck = function () {
             var ret = false;
@@ -258,19 +248,6 @@ var handlePlayerInput = function (delta) {
             return ret;
         };
         gameObjects.push(bullet);
-        /* This didn't work because the length of the array changed,
-        and then previously set `pos` became wrong.
-        `delete` operator also caused some issues.
-
-        var pos = gameObjects.length;
-        gameObjects[pos] = bullet;
-        setTimeout(function () {
-            // Remove the 1 bullet we added above when it will be offscreen
-            gameObjects.splice(pos, 1);
-            // TODO it will automatically get garbage collected from here, right?
-            console.log('removing an item: ' + pos);
-        }, 2000);*/
-
 
         // limit player firing rate
         player.shotReady = false;
@@ -305,7 +282,7 @@ var drawGameObjects = function (ctx) {
     while (i--) {
         var obj = gameObjects[i];
         if (typeof obj.draw !== 'undefined') {
-            obj.draw(ctx);
+            obj.draw();
         }
     }
 };
@@ -323,8 +300,6 @@ var drawUi = function (ctx) {
     //ctx.fillStyle = rgbColor();
     //ctx.strokeStyle = '#000';
 }
-    
-
 
 /*
 Game loop
@@ -378,13 +353,20 @@ var reset = function () {
 
 };
 // Update game objects
-var update = function (delta) {
+var update = function () {
+    /*
+    Calculate delta time, converting milliseconds to seconds.
+    Speed units are in pixels per second.
+    */
+    var currentTime = Date.now();
+    var deltaTime = (currentTime - lastTime) / 1000;
 
     //document.getElementById('debug').innerText = ;
 
-    handlePlayerInput(delta);
+    handlePlayerInput(deltaTime);
 
-    updateGameObjects(delta);
+    updateGameObjects(deltaTime);
+
 
     if (circleCircleCollisionCheck(target, player)) {
         ++score;
@@ -394,6 +376,9 @@ var update = function (delta) {
         --score;
         reset();
     }
+
+    // Set `lastTime` for the next pass
+    lastTime = currentTime;
 
     // TODO: prevent high speed objects from skipping through solids between frames
 };
@@ -414,18 +399,9 @@ var main = function () {
     if (!running) {
         return;
     }
-    /*
-    Calculate delta time, converting milliseconds to seconds.
-    Speed units are in pixels per second.
-    */
-    var currentTime = Date.now();
-    var deltaTime = (currentTime - lastTime) / 1000;
 
-    update(deltaTime);
+    update();
     render();
-
-    // Set `lastTime` for the next pass
-    lastTime = currentTime;
 
     // Call `main` again when the next frame is ready.
     requestAnimationFrame(main);
