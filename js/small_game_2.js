@@ -28,7 +28,7 @@ function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
 };
 /*
-TODO use classes in Small Game 2.
+TODO use classes or chain constructors?
 abstract GameObject = function (...) {
     this.coords = new Coords(x, y);
     this.size = ...;
@@ -87,7 +87,7 @@ var Box = function (x, y, w, h, borderColor, bgColor) {
 };
 /*
 var Sprite = function () {
-    TODO in Small Game 2
+    TODO
     this.draw = function (canvasContext2D) {
         canvasContext2D.drawImage(this.image, this.coords.x, this.coords.y);
     };
@@ -195,7 +195,7 @@ window.onload = function () {
 
 
 /*
-TODO in Small Game 2
+TODO
 var readyHtmlElementObjects = function () {
     // DOM ready for game objects that source from Image(), etc.
     // Should probably wait for canvas element to be ready?
@@ -205,17 +205,131 @@ var readyHtmlElementObjects = function () {
 var player;
 var target;
 var obstacle;
+var score;
 
-// TODO
-var gameObjects = [player, target, obstacle];
-var score = 0;
+var gameObjects;
+
+var handlePlayerInput = function (delta) {
+
+    // TODO prevent double speed from pressing 2 keys at once
+    // TODO move this to updateMovement
+    // UP
+    if (38 in keysDown) {
+        //player.direction.y
+        player.coords.y -= player.speed * delta;
+    }
+    // DOWN
+    if (40 in keysDown) {
+        player.coords.y += player.speed * delta;
+    }
+    // LEFT
+    if (37 in keysDown) {
+        player.coords.x -= player.speed * delta;
+    }
+    // RIGHT
+    if (39 in keysDown) {
+        player.coords.x += player.speed * delta;
+    }
+
+    // SPACE
+    if ((32 in keysDown) && (player.shotReady === true)) {
+
+        var bullet = new Circle(
+            player.coords.x, player.coords.y, 8,
+            '#000', '#000'
+        );
+
+        // TODO implement 2d vectors?
+        // TODO add player's current speed to bullet
+        bullet.speed = 1024;
+        // direction for x and y should be in -1, 0, 1
+        bullet.direction = new Coords(1, 0);
+
+        // TODO Is there a better way to delete a specific object?
+        // We will have to manually remove bullets that have been alive too long,
+        // in `update`
+        // FIXME: pausing game expires bullets
+        bullet.timecreated = Date.now();
+        bullet.expiredCheck = function () {
+            var ret = false;
+            if ((Date.now() - this.timecreated) >= 2000) {
+                ret = true;
+            }
+            return ret;
+        };
+        gameObjects.push(bullet);
+        /* This didn't work because the length of the array changed,
+        and then previously set `pos` became wrong.
+        `delete` operator also caused some issues.
+
+        var pos = gameObjects.length;
+        gameObjects[pos] = bullet;
+        setTimeout(function () {
+            // Remove the 1 bullet we added above when it will be offscreen
+            gameObjects.splice(pos, 1);
+            // TODO it will automatically get garbage collected from here, right?
+            console.log('removing an item: ' + pos);
+        }, 2000);*/
+
+
+        // limit player firing rate
+        player.shotReady = false;
+        setTimeout(function () {
+            player.shotReady = true;
+        }, 250);
+    }
+
+};
+
+var updateGameObjects = function (delta) {
+    var i = gameObjects.length;
+    while (i--) {
+        var obj = gameObjects[i];
+        // Movement
+        if ((typeof obj.speed !== 'undefined') && (typeof obj.direction !== 'undefined')) {
+            obj.coords.x += (obj.speed * obj.direction.x * delta);
+            obj.coords.y += (obj.speed * obj.direction.y * delta);
+        }
+        // Expiry
+        if (typeof obj.expiredCheck !== 'undefined') {
+            if (obj.expiredCheck() === true) {
+                // remove expired objects
+                gameObjects.splice(i, 1);
+            }
+        }
+    }
+};
+
+var drawGameObjects = function (ctx) {
+    var i = gameObjects.length;
+    while (i--) {
+        var obj = gameObjects[i];
+        if (typeof obj.draw !== 'undefined') {
+            obj.draw(ctx);
+        }
+    }
+};
+var drawUi = function (ctx) {
+    // Score
+    ctx.fillStyle = '#000';
+    ctx.strokeStyle = '#000';
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    ctx.fillText('score: ' + score, 16, 16);
+
+    // TODO health bar, RGB function green to red based on HP
+    //ctx.fillStyle = rgbColor();
+    //ctx.strokeStyle = '#000';
+}
+    
+
 
 /*
 Game loop
 */
 // Pause and unpause
-// TODO
-/*
 window.addEventListener('focus', function() {
     unpause();
 });
@@ -232,9 +346,11 @@ var unpause = function () {
     lastTime = Date.now();
     main();
 };
-*/
+
 // Reset the game when the player catches runs over a target
 var reset = function () {
+    // TODO scoring system
+    score = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     player = new Circle(
@@ -242,6 +358,8 @@ var reset = function () {
         '#000', randColor()
     );
     player.speed = 256;
+    //player.direction = new Coords(0, 0);
+    player.shotReady = true;
 
     target = new Circle(
         null, null, 16,
@@ -252,26 +370,21 @@ var reset = function () {
     obstacle = new Box(null, null, 128, 128, '#000', '#f00');
     obstacle.coords = randCoordsInBounds(canvas, 128);
 
-    // TODO later: If objects spawn on top of each other, respawn them
+    // TODO: If objects spawn on top of each other, respawn them
     // if (boxCircleCollisionCheck(obstacle, )) {}
+
+    gameObjects = [];
+    gameObjects.push(player, target, obstacle);
 
 };
 // Update game objects
 var update = function (delta) {
-    // checkPlayerInput();
-    if (38 in keysDown) { // Player holding up
-        player.coords.y -= player.speed * delta;
-    }
-    if (40 in keysDown) { // Player holding down
-        player.coords.y += player.speed * delta;
-    }
-    if (37 in keysDown) { // Player holding left
-        player.coords.x -= player.speed * delta;
-    }
-    if (39 in keysDown) { // Player holding right
-        player.coords.x += player.speed * delta;
-    }
-    // TODO prevent double speed from pressing 2 keys at once
+
+    //document.getElementById('debug').innerText = ;
+
+    handlePlayerInput(delta);
+
+    updateGameObjects(delta);
 
     if (circleCircleCollisionCheck(target, player)) {
         ++score;
@@ -286,27 +399,14 @@ var update = function (delta) {
 };
 // Draw everything
 var render = function () {
-    // TODO loop through to call `draw` method on all `gameObjects` with `ctx` passed
-
     // CSS no longer works for backgroud with alpha off,
-    // Assumes opaque black background
+    // assumes opaque black background, so draw the background
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    player.draw(ctx);
-    target.draw(ctx);
-    obstacle.draw(ctx);
+    drawGameObjects(ctx);
 
-    // Score
-    ctx.fillStyle = '#000';
-    ctx.strokeStyle = '#000';
-    ctx.font = '18px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    // TODO text needs antialiasing
-    var textArgs = ['score: ' + score, 16, 16];
-    ctx.fillText.apply(ctx, textArgs);
-    //ctx.strokeText.apply(ctx, textArgs);
+    drawUi(ctx);
 };
 // The main game loop
 // TODO in another project: splash screen with instructions
