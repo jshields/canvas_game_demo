@@ -22,6 +22,7 @@ function randCoordsInBounds(canvas, padding) {
     var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
     return new Coords(randX, randY);
 }
+
 function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
 }
@@ -46,7 +47,6 @@ var GameObjectPrototype = GameObject.prototype = {
         ctx.fill();
     },
 };
-
 var Circle = function (x, y, rad, borderColor, bgColor) {
     GameObject.call(this, x, y, borderColor, bgColor);
     this.radius = rad;
@@ -61,7 +61,6 @@ Circle.prototype.drawGraphic = function () {
         0, 2 * Math.PI
     );
 };
-
 var Box = function (x, y, w, h, borderColor, bgColor) {
     GameObject.call(this, x, y, borderColor, bgColor);
     this.width = w;
@@ -97,7 +96,7 @@ function pointCircleCollisionCheck(coords, circle) {
     var distance = distanceCheck(coords, circle.coords);
     var radius = circle.radius;
     return (distance <= radius);
-};
+}
 function circleCircleCollisionCheck(circle1, circle2) {
     var ret = false;
     var distance = distanceCheck(circle1.coords, circle2.coords);
@@ -106,7 +105,7 @@ function circleCircleCollisionCheck(circle1, circle2) {
         ret = true;
     }
     return ret;
-};
+}
 function boxBoxCollisionCheck(box1, box2) {
     var ret = false;
     // Look for gaps between the sides, relative to box1,
@@ -125,8 +124,8 @@ function boxBoxCollisionCheck(box1, box2) {
         ret = true;
     }
     return ret;
-};
-var boxCircleCollisionCheck = function (box, circle) {
+}
+function boxCircleCollisionCheck(box, circle) {
     // Find the closest point on the rectangle to the circle.
     // Clamp circle center coordinates to box coordinates.
     var closestX = clamp(circle.coords.x, box.coords.x, box.coords.x + box.width);
@@ -134,7 +133,7 @@ var boxCircleCollisionCheck = function (box, circle) {
 
     // Do a collision check between the closest point and circle
     return pointCircleCollisionCheck(new Coords(closestX, closestY), circle)
-};
+}
 // TODO in a later project: broad phase and narrow phase collision detection
 
 /*
@@ -143,24 +142,24 @@ DOM event handling
 // Handle click state tracking
 var clicked = false;
 var mouseX, mouseY;
-addEventListener("mousedown", function (e) {
-    mouseX = e.pageX;
-    mouseY = e.pageY;
+addEventListener('mousedown', function (ev) {
+    mouseX = ev.pageX;
+    mouseY = ev.pageY;
     clicked = true;
 }, false);
-addEventListener("mouseup", function (e) {
-    mouseX = e.pageX;
-    mouseY = e.pageY;
+addEventListener('mouseup', function (ev) {
+    mouseX = ev.pageX;
+    mouseY = ev.pageY;
     clicked = false;
 }, false);
 
 // Handle keyboard state tracking
 var keysDown = {};
-addEventListener('keydown', function (e) {
-    keysDown[e.keyCode] = true;
+addEventListener('keydown', function (ev) {
+    keysDown[ev.keyCode] = true;
 }, false);
-addEventListener('keyup', function (e) {
-    delete keysDown[e.keyCode];
+addEventListener('keyup', function (ev) {
+    delete keysDown[ev.keyCode];
 }, false);
 
 
@@ -199,25 +198,25 @@ var score;
 var gameObjects;
 
 var handlePlayerInput = function (delta) {
-
     // TODO prevent double speed from pressing 2 keys at once
-    // TODO move this to updateMovement
+    player.direction.x = 0;
+    player.direction.y = 0;
+
     // UP
     if (38 in keysDown) {
-        //player.direction.y
-        player.coords.y -= player.speed * delta;
+        player.direction.y = -1;
     }
     // DOWN
     if (40 in keysDown) {
-        player.coords.y += player.speed * delta;
+        player.direction.y = 1;
     }
     // LEFT
     if (37 in keysDown) {
-        player.coords.x -= player.speed * delta;
+        player.direction.x = -1;
     }
     // RIGHT
     if (39 in keysDown) {
-        player.coords.x += player.speed * delta;
+        player.direction.x = 1;
     }
 
     // SPACE
@@ -228,7 +227,6 @@ var handlePlayerInput = function (delta) {
             '#000', '#000'
         );
 
-        // TODO implement 2d vectors?
         // TODO add player's current speed to bullet
         bullet.speed = 1024;
         // direction for x and y should be in -1, 0, 1
@@ -264,8 +262,15 @@ var updateGameObjects = function (delta) {
         var obj = gameObjects[i];
         // Movement
         if ((typeof obj.speed !== 'undefined') && (typeof obj.direction !== 'undefined')) {
-            obj.coords.x += (obj.speed * obj.direction.x * delta);
-            obj.coords.y += (obj.speed * obj.direction.y * delta);
+            if (obj.direction.x === 0 || obj.direction.y === 0) {
+                obj.coords.x += (obj.speed * obj.direction.x * delta);
+                obj.coords.y += (obj.speed * obj.direction.y * delta);
+            } else {
+                // Reduce length of movement when x and y are both active,
+                // because the hypotenuse is longer and it would give "extra speed"
+                obj.coords.x += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.x * delta);
+                obj.coords.y += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.y * delta);
+            }
         }
         // Expiry
         if (typeof obj.expiredCheck !== 'undefined') {
@@ -277,7 +282,7 @@ var updateGameObjects = function (delta) {
     }
 };
 
-var drawGameObjects = function (ctx) {
+var drawGameObjects = function () {
     var i = gameObjects.length;
     while (i--) {
         var obj = gameObjects[i];
@@ -286,7 +291,7 @@ var drawGameObjects = function (ctx) {
         }
     }
 };
-var drawUi = function (ctx) {
+var drawUi = function () {
     // Score
     ctx.fillStyle = '#000';
     ctx.strokeStyle = '#000';
@@ -333,7 +338,7 @@ var reset = function () {
         '#000', randColor()
     );
     player.speed = 256;
-    //player.direction = new Coords(0, 0);
+    player.direction = new Coords(0, 0);
     player.shotReady = true;
 
     target = new Circle(
@@ -348,8 +353,7 @@ var reset = function () {
     // TODO: If objects spawn on top of each other, respawn them
     // if (boxCircleCollisionCheck(obstacle, )) {}
 
-    gameObjects = [];
-    gameObjects.push(player, target, obstacle);
+    gameObjects = [player, target, obstacle];
 
 };
 // Update game objects
@@ -366,7 +370,6 @@ var update = function () {
     handlePlayerInput(deltaTime);
 
     updateGameObjects(deltaTime);
-
 
     if (circleCircleCollisionCheck(target, player)) {
         ++score;
@@ -389,14 +392,15 @@ var render = function () {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    drawGameObjects(ctx);
+    drawGameObjects();
 
-    drawUi(ctx);
+    drawUi();
 };
 // The main game loop
 // TODO in another project: splash screen with instructions
 var main = function () {
     if (!running) {
+        // TODO draw a pause screen
         return;
     }
 
