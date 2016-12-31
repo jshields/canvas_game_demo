@@ -27,25 +27,31 @@ function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
 }
 
+//var Shape
+
 var GameObject = function (x, y, borderColor, bgColor) {
     this.coords = new Coords(x, y);
+    this.direction = new Coords(0, 0);
+    this.speed = 0;
     this.borderColor = borderColor;
     this.bgColor = bgColor;
+
+    return this;
 };
 var GameObjectPrototype = GameObject.prototype = {
-    drawGraphic: function () {
-        console.error('must implement on child');
+    graphic: function () {
+        console.error('Not Implemented');
     },
     draw: function () {
         ctx.strokeStyle = this.borderColor;
         ctx.fillStyle = this.bgColor;
         ctx.beginPath();
 
-        this.drawGraphic();
+        this.graphic();
 
         ctx.stroke();
         ctx.fill();
-    },
+    }
 };
 var Circle = function (x, y, rad, borderColor, bgColor) {
     GameObject.call(this, x, y, borderColor, bgColor);
@@ -54,7 +60,7 @@ var Circle = function (x, y, rad, borderColor, bgColor) {
     return this;
 };
 Circle.prototype = Object.create(GameObjectPrototype);
-Circle.prototype.drawGraphic = function () {
+Circle.prototype.graphic = function () {
     ctx.arc(
         this.coords.x, this.coords.y, this.radius,
         // 0 degrees to 360 degrees, in radians
@@ -69,7 +75,7 @@ var Box = function (x, y, w, h, borderColor, bgColor) {
     return this;
 };
 Box.prototype = Object.create(GameObjectPrototype);
-Box.prototype.drawGraphic = function () {
+Box.prototype.graphic = function () {
     ctx.rect(this.coords.x, this.coords.y, this.width, this.height);
 };
 
@@ -181,7 +187,6 @@ window.onload = function () {
     document.body.appendChild(canvas);
 };
 
-
 /*
 TODO
 var readyHtmlElementObjects = function () {
@@ -198,7 +203,6 @@ var score;
 var gameObjects;
 
 var handlePlayerInput = function (delta) {
-    // TODO prevent double speed from pressing 2 keys at once
     player.direction.x = 0;
     player.direction.y = 0;
 
@@ -229,14 +233,13 @@ var handlePlayerInput = function (delta) {
 
         // TODO add player's current speed to bullet
         bullet.speed = 1024;
-        // direction for x and y should be in -1, 0, 1
         bullet.direction = new Coords(1, 0);
 
         // TODO Is there a better way to delete a specific object?
         // We will have to manually remove bullets that have been alive too long,
         // in `update`
         // FIXME: pausing game expires bullets
-        // remove when off screen
+        // remove when off screen instead of using a timer?
         bullet.timecreated = Date.now();
         bullet.expiredCheck = function () {
             var ret = false;
@@ -253,7 +256,6 @@ var handlePlayerInput = function (delta) {
             player.shotReady = true;
         }, 250);
     }
-
 };
 
 var updateGameObjects = function (delta) {
@@ -261,18 +263,21 @@ var updateGameObjects = function (delta) {
     while (i--) {
         var obj = gameObjects[i];
         // Movement
-        if ((typeof obj.speed !== 'undefined') && (typeof obj.direction !== 'undefined')) {
-            if (obj.direction.x === 0 || obj.direction.y === 0) {
-                obj.coords.x += (obj.speed * obj.direction.x * delta);
-                obj.coords.y += (obj.speed * obj.direction.y * delta);
-            } else {
-                // Reduce length of movement when x and y are both active,
-                // because the hypotenuse is longer and it would give "extra speed"
-                obj.coords.x += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.x * delta);
-                obj.coords.y += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.y * delta);
-            }
+        if (obj.direction.x === 0 || obj.direction.y === 0) {
+            obj.coords.x += (obj.speed * obj.direction.x * delta);
+            obj.coords.y += (obj.speed * obj.direction.y * delta);
+        } else {
+            // x and y both active (diagonal movement),
+            // the movement hypotenuse is longer and it would give "extra speed"
+            // a^2 + b^2 = c^2
+            // sqrt(x^2 + y^2) = sqrt(2)
+            // Scaling the vector by (1 / c) normalizes the vector
+            // TODO implement a Vector2d class for real?
+            obj.coords.x += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.x * delta);
+            obj.coords.y += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.y * delta);
         }
         // Expiry
+        //obj.lifetime += deltaTime;
         if (typeof obj.expiredCheck !== 'undefined') {
             if (obj.expiredCheck() === true) {
                 // remove expired objects
@@ -282,7 +287,25 @@ var updateGameObjects = function (delta) {
     }
 };
 
+var handleCollisions = function () {
+    /*var i = gameObjects.length;
+    while (i--) {
+        var obj = gameObjects[i];
+        
+    }*/
+    // TODO create a way to register collision callbacks between two classes
+    if (circleCircleCollisionCheck(target, player)) {
+        ++score;
+        reset();
+    }
+    if (boxCircleCollisionCheck(obstacle, player)) {
+        --score;
+        reset();
+    }
+};
+
 var drawGameObjects = function () {
+    // TODO support layer ordering?
     var i = gameObjects.length;
     while (i--) {
         var obj = gameObjects[i];
@@ -350,14 +373,23 @@ var reset = function () {
     obstacle = new Box(null, null, 128, 128, '#000', '#f00');
     obstacle.coords = randCoordsInBounds(canvas, 128);
 
-    // TODO: If objects spawn on top of each other, respawn them
-    // if (boxCircleCollisionCheck(obstacle, )) {}
+    // If objects spawn on top of each other, respawn them
+    // TODO check this in advance rather than having to retry
+    if (boxCircleCollisionCheck(obstacle, target) ||
+        boxCircleCollisionCheck(obstacle, player) ||
+        circleCircleCollisionCheck(target, player)
+        ) {
+        console.log('bad spawn location, retrying');
+        reset();
+    }
+
+    // TODO create some walls that the player can collide with
 
     gameObjects = [player, target, obstacle];
-
 };
-// Update game objects
+
 var update = function () {
+    // Update game objects
     /*
     Calculate delta time, converting milliseconds to seconds.
     Speed units are in pixels per second.
@@ -371,14 +403,7 @@ var update = function () {
 
     updateGameObjects(deltaTime);
 
-    if (circleCircleCollisionCheck(target, player)) {
-        ++score;
-        reset();
-    }
-    if (boxCircleCollisionCheck(obstacle, player)) {
-        --score;
-        reset();
-    }
+    handleCollisions();
 
     // Set `lastTime` for the next pass
     lastTime = currentTime;
