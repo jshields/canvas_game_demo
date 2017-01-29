@@ -18,9 +18,16 @@ var Coords = function (x, y) {
 };
 function randCoordsInBounds(canvas, padding) {
     // random canvas coords, padding to prevent partial offscreen rendering
+    // more or less white noise coords
     var randX = (padding + (Math.random() * (canvas.width - (2 * padding))));
     var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
     return new Coords(randX, randY);
+}
+function blueNoiseCoords(canvas, cells) {
+    // blue noise cells to spawn objects pseudo randomly,
+    // while avoiding overlapped spawns.
+    // assume square canvas to simplify things
+    // TODO
 }
 
 function clamp(val, min, max) {
@@ -174,7 +181,13 @@ addEventListener('keyup', function (ev) {
 // TODO properly scale canvas to device resolution:
 // https://www.html5rocks.com/en/tutorials/canvas/hidpi/
 // http://stackoverflow.com/a/26154753/3538313
-var resolution = new Coords(1024, 768);
+
+
+//var tileSize = 64;
+//var tileCount = 10;
+//var canvasSize = tileSize * tileCount;
+
+var resolution = new Coords(640, 640);
 var canvas = document.createElement('canvas');
 canvas.innerText = 'Your browser does not support the canvas element.';
 canvas.width = resolution.x;
@@ -363,6 +376,28 @@ var reset = function () {
     player.speed = 256;
     player.direction = new Coords(0, 0);
     player.shotReady = true;
+
+    player.graphic = function () {
+        Circle.prototype.graphic.call(this);
+        // draw direction facing line
+        //ctx.beginPath();
+
+        var pointer = new Coords();
+        pointer.x = this.direction.x * this.radius
+        if (this.direction.x === 0 || this.direction.y === 0) {
+            pointer.x = this.direction.x * (this.radius + 5);
+            pointer.y = this.direction.y * (this.radius + 5);
+        } else {
+            pointer.x = (this.direction.x * (this.radius + 5)) * (1 / Math.SQRT2);
+            pointer.y = (this.direction.y * (this.radius + 5)) * (1 / Math.SQRT2);
+        }
+
+        ctx.moveTo(this.coords.x, this.coords.y);
+        ctx.lineTo(
+            this.coords.x + pointer.x,
+            this.coords.y + pointer.y
+        );
+    };
 
     target = new Circle(
         null, null, 16,
