@@ -1,5 +1,81 @@
 'use strict';
 
+// Calculations
+function clamp(val, min, max) {
+    return val < min ? min : val > max ? max : val;
+}
+function distanceCheck(coords1, coords2) {
+    // How far are two Point instances from each other?
+    return Math.sqrt(
+        Math.pow(coords1.x - coords2.x, 2) +
+        Math.pow(coords1.y - coords2.y, 2)
+    );
+}
+
+// Collision
+function pointCircleCollisionCheck(coords, circle) {
+    // Is coords point touching circle?
+    // Works for e.g. mouse click but not others
+    var distance = distanceCheck(coords, circle.coords);
+    var radius = circle.radius;
+    return (distance <= radius);
+}
+function circleCircleCollisionCheck(circle1, circle2) {
+    var ret = false;
+    var distance = distanceCheck(circle1.coords, circle2.coords);
+    if (distance < circle1.radius + circle2.radius) {
+        // Collision detected
+        ret = true;
+    }
+    return ret;
+}
+function boxBoxCollisionCheck(box1, box2) {
+    var ret = false;
+    // Look for gaps between the sides, relative to box1,
+    // where the coords of a box is the upper left corner
+    if (
+        // 1) box1's left line (and to the right) contains right side of box2
+        box1.coords.x < box2.coords.x + box2.width &&
+        // 2) box1's right line (and to the left) contains left side of box2
+        box1.coords.x + box1.width > box2.coords.x &&
+        // 3) box1's top line and below contains the bottom side of box2 (remember +Y draws downward)
+        box1.coords.y < box2.coords.y + box2.height &&
+        // 4) box1's bottom line and above contains top side of box2 (remember +Y draws downward)
+        box1.coords.y + box1.height > box2.coords.y
+        ) {
+        // Collision detected
+        ret = true;
+    }
+    return ret;
+}
+function boxCircleCollisionCheck(box, circle) {
+    // Find the closest point on the rectangle to the circle.
+    // Clamp circle center coordinates to box coordinates.
+    var closestX = clamp(circle.coords.x, box.coords.x, box.coords.x + box.width);
+    var closestY = clamp(circle.coords.y, box.coords.y, box.coords.y + box.height);
+
+    // Do a collision check between the closest point and circle
+    return pointCircleCollisionCheck(new Point(closestX, closestY), circle)
+}
+// TODO in a later project: broad phase and narrow phase collision detection
+var collisionShapeOpts = {
+    BOX: 'BOX',
+    CIRCLE: 'CIRCLE'
+};
+function Collider(collisionShape, collisionTag, collidesWithTags) {
+
+    if (values(collisionShapeOpts).indexOf(collisionShape) === -1) {
+        throw new Error('Invalid Collision Shape: ' + collisionShape);
+    }
+
+    this.collisionShape = collisionShape;
+    this.collisionTag = collisionTag;
+    this.collidesWithTags = collidesWithTags;
+
+    return this;
+}
+
+// Color
 function rgbColor(r, g, b) {
     // color string as accepted by `CanvasRenderingContext2D.fillStyle`
     return 'rgb(' + r + ',' + g + ',' + b + ')';
@@ -11,34 +87,31 @@ function randColor() {
     return rgbColor(r, g, b);
 }
 
-var Coords = function (x, y) {
+// 2D
+var Point = function (x, y) {
     this.x = x;
     this.y = y;
     return this;
 };
-function randCoordsInBounds(canvas, padding) {
+function randPointInBounds(canvas, padding) {
     // random canvas coords, padding to prevent partial offscreen rendering
     // more or less white noise coords
     var randX = (padding + (Math.random() * (canvas.width - (2 * padding))));
     var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
-    return new Coords(randX, randY);
+    return new Point(randX, randY);
 }
-function blueNoiseCoords(canvas, cells) {
+function blueNoiseCells(canvas, cells) {
     // blue noise cells to spawn objects pseudo randomly,
     // while avoiding overlapped spawns.
     // assume square canvas to simplify things
     // TODO
 }
 
-function clamp(val, min, max) {
-    return val < min ? min : val > max ? max : val;
-}
-
 //var Shape
 
 var GameObject = function (x, y, borderColor, bgColor) {
-    this.coords = new Coords(x, y);
-    this.direction = new Coords(0, 0);
+    this.coords = new Point(x, y);
+    this.direction = new Point(0, 0);
     this.speed = 0;
     this.borderColor = borderColor;
     this.bgColor = bgColor;
@@ -95,85 +168,19 @@ var Sprite = function () {
     return this;
 };
 */
-// Common game calculations
-function distanceCheck(coords1, coords2) {
-    // How far are two Coords instances from each other?
-    return Math.sqrt(
-        Math.pow(coords1.x - coords2.x, 2) +
-        Math.pow(coords1.y - coords2.y, 2)
-    );
-}
-function pointCircleCollisionCheck(coords, circle) {
-    // Is coords point touching circle?
-    // Works for e.g. mouse click but not others
-    var distance = distanceCheck(coords, circle.coords);
-    var radius = circle.radius;
-    return (distance <= radius);
-}
-function circleCircleCollisionCheck(circle1, circle2) {
-    var ret = false;
-    var distance = distanceCheck(circle1.coords, circle2.coords);
-    if (distance < circle1.radius + circle2.radius) {
-        // Collision detected
-        ret = true;
-    }
-    return ret;
-}
-function boxBoxCollisionCheck(box1, box2) {
-    var ret = false;
-    // Look for gaps between the sides, relative to box1,
-    // where the coords of a box is the upper left corner
-    if (
-        // 1) box1's left line (and to the right) contains right side of box2
-        box1.coords.x < box2.coords.x + box2.width &&
-        // 2) box1's right line (and to the left) contains left side of box2
-        box1.coords.x + box1.width > box2.coords.x &&
-        // 3) box1's top line and below contains the bottom side of box2 (remember +Y draws downward)
-        box1.coords.y < box2.coords.y + box2.height &&
-        // 4) box1's bottom line and above contains top side of box2 (remember +Y draws downward)
-        box1.coords.y + box1.height > box2.coords.y
-        ) {
-        // Collision detected
-        ret = true;
-    }
-    return ret;
-}
-function boxCircleCollisionCheck(box, circle) {
-    // Find the closest point on the rectangle to the circle.
-    // Clamp circle center coordinates to box coordinates.
-    var closestX = clamp(circle.coords.x, box.coords.x, box.coords.x + box.width);
-    var closestY = clamp(circle.coords.y, box.coords.y, box.coords.y + box.height);
-
-    // Do a collision check between the closest point and circle
-    return pointCircleCollisionCheck(new Coords(closestX, closestY), circle)
-}
-// TODO in a later project: broad phase and narrow phase collision detection
 
 /*
 DOM event handling
 */
-// Handle click state tracking
-var clicked = false;
-var mouseX, mouseY;
-addEventListener('mousedown', function (ev) {
-    mouseX = ev.pageX;
-    mouseY = ev.pageY;
-    clicked = true;
-}, false);
-addEventListener('mouseup', function (ev) {
-    mouseX = ev.pageX;
-    mouseY = ev.pageY;
-    clicked = false;
-}, false);
 
 // Handle keyboard state tracking
 var keysDown = {};
-addEventListener('keydown', function (ev) {
+document.addEventListener('keydown', function (ev) {
     keysDown[ev.keyCode] = true;
-}, false);
-addEventListener('keyup', function (ev) {
+});
+document.addEventListener('keyup', function (ev) {
     delete keysDown[ev.keyCode];
-}, false);
+});
 
 
 /* Game objects */
@@ -187,7 +194,7 @@ addEventListener('keyup', function (ev) {
 //var tileCount = 10;
 //var canvasSize = tileSize * tileCount;
 
-var resolution = new Coords(640, 640);
+var resolution = new Point(640, 640);
 var canvas = document.createElement('canvas');
 canvas.innerText = 'Your browser does not support the canvas element.';
 canvas.width = resolution.x;
@@ -196,17 +203,10 @@ canvas.height = resolution.y;
 // http://blogs.adobe.com/webplatform/2014/04/01/new-canvas-features/
 var ctx = canvas.getContext('2d', {'alpha': false});
 
-window.onload = function () {
+window.addEventListener('load', function (ev) {
     document.body.appendChild(canvas);
-};
+});
 
-/*
-TODO
-var readyHtmlElementObjects = function () {
-    // DOM ready for game objects that source from Image(), etc.
-    // Should probably wait for canvas element to be ready?
-};
-*/
 
 var player;
 var target;
@@ -246,7 +246,7 @@ var handlePlayerInput = function (delta) {
 
         // TODO add player's current speed to bullet
         bullet.speed = 1024;
-        bullet.direction = new Coords(1, 0);
+        bullet.direction = new Point(player.direction.x, player.direction.y);
 
         // TODO Is there a better way to delete a specific object?
         // We will have to manually remove bullets that have been alive too long,
@@ -301,11 +301,40 @@ var updateGameObjects = function (delta) {
 };
 
 var handleCollisions = function () {
-    /*var i = gameObjects.length;
+    /*
+    var i = gameObjects.length;
     while (i--) {
         var obj = gameObjects[i];
-        
+        var otherObjs = gameObjects.splice(i, 1);
+        var j = otherObjs.length;
+        while (j--) {
+            var other = otherObjs[j];
+            // if the other object's collision tag is in the object's "collides with" tags
+            if (other.collidesWithTags.indexOf(obj.collisionTag) !== -1) {
+                // these two objects matter to each other, check if they collide
+                var source = obj.collisionShape, target = other.collisionShape;
+                // Find a better way to map shapes to their collision functions?
+                if (source === collisionShapeOpts.BOX) {
+                    if (target === collisionShapeOpts.BOX) {
+                        // box box
+                        boxBoxCollisionCheck();
+                    } else if (target === collisionShapeOpts.CIRCLE) {
+                        // box circle
+                        boxCircleCollisionCheck();
+                    }
+                } else if (source === collisionShapeOpts.CIRCLE) {
+                    if (target === collisionShapeOpts.BOX) {
+                        // box box
+                        boxBoxCollisionCheck();
+                    } else if (target === collisionShapeOpts.CIRCLE) {
+                        // box circle
+                        boxCircleCollisionCheck();
+                    }
+                }
+            }
+        }
     }*/
+
     // TODO create a way to register collision callbacks between two classes
     if (circleCircleCollisionCheck(target, player)) {
         ++score;
@@ -369,21 +398,25 @@ var reset = function () {
     score = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Setup player
     player = new Circle(
         canvas.width / 2, canvas.height / 2, 32,
         '#000', randColor()
     );
     player.speed = 256;
-    player.direction = new Coords(0, 0);
+    // movement direction - affects position
+    player.direction = new Point(0, 0);
+    // facing direction - remains after keys released
+    player.facing = new Point(0, 0);
     player.shotReady = true;
 
     player.graphic = function () {
         Circle.prototype.graphic.call(this);
+
         // draw direction facing line
         //ctx.beginPath();
+        var pointer = new Point();
 
-        var pointer = new Coords();
-        pointer.x = this.direction.x * this.radius
         if (this.direction.x === 0 || this.direction.y === 0) {
             pointer.x = this.direction.x * (this.radius + 5);
             pointer.y = this.direction.y * (this.radius + 5);
@@ -403,18 +436,18 @@ var reset = function () {
         null, null, 16,
         '#000', '#0f0'
     );
-    target.coords = randCoordsInBounds(canvas, 32);
+    target.coords = randPointInBounds(canvas, 32);
 
     obstacle = new Box(null, null, 128, 128, '#000', '#f00');
-    obstacle.coords = randCoordsInBounds(canvas, 128);
+    obstacle.coords = randPointInBounds(canvas, 128);
 
     // If objects spawn on top of each other, respawn them
-    // TODO check this in advance rather than having to retry
+    // TODO spawn using blue noise cells instead to solve this problem
     if (boxCircleCollisionCheck(obstacle, target) ||
         boxCircleCollisionCheck(obstacle, player) ||
         circleCircleCollisionCheck(target, player)
         ) {
-        console.log('bad spawn location, retrying');
+        console.warn('bad spawn location, retrying');
         reset();
     }
 
