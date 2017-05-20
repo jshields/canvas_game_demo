@@ -1,4 +1,4 @@
-Small Game 2
-============
+Small Game
+==========
 
 Work in Progress
