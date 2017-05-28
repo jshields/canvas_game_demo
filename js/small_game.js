@@ -5,7 +5,7 @@ function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
 }
 function distanceCheck(coords1, coords2) {
-    // How far are two Point instances from each other?
+    // calculate distance between two Point instances
     return Math.sqrt(
         Math.pow(coords1.x - coords2.x, 2) +
         Math.pow(coords1.y - coords2.y, 2)
@@ -57,7 +57,7 @@ function boxCircleCollisionCheck(box, circle) {
     // Do a collision check between the closest point and circle
     return pointCircleCollisionCheck(new Point(closestX, closestY), circle)
 }
-// TODO in a later project: broad phase and narrow phase collision detection
+// TODO? broad phase and narrow phase collision detection
 var collisionShapeOpts = {
     BOX: 'BOX',
     CIRCLE: 'CIRCLE'
@@ -103,7 +103,7 @@ function randPointInBounds(canvas, padding) {
 function blueNoiseCells(canvas, cells) {
     // blue noise cells to spawn objects pseudo randomly,
     // while avoiding overlapped spawns.
-    // assume square canvas to simplify things
+    // assume square canvas to simplify things?
     // TODO
 }
 
@@ -246,7 +246,7 @@ var handlePlayerInput = function (delta) {
 
         // TODO add player's current speed to bullet
         bullet.speed = 1024;
-        bullet.direction = new Point(player.direction.x, player.direction.y);
+        bullet.direction = new Point(player.facing.x, player.facing.y);
 
         // TODO Is there a better way to delete a specific object?
         // We will have to manually remove bullets that have been alive too long,
@@ -336,10 +336,13 @@ var handleCollisions = function () {
     }*/
 
     // TODO create a way to register collision callbacks between two classes
+
+    // player collects good thing
     if (circleCircleCollisionCheck(target, player)) {
         ++score;
         reset();
     }
+    // player hits bad thing
     if (boxCircleCollisionCheck(obstacle, player)) {
         --score;
         reset();
@@ -369,7 +372,7 @@ var drawUi = function () {
     // TODO health bar, RGB function green to red based on HP
     //ctx.fillStyle = rgbColor();
     //ctx.strokeStyle = '#000';
-}
+};
 
 /*
 Game loop
@@ -406,8 +409,8 @@ var reset = function () {
     player.speed = 256;
     // movement direction - affects position
     player.direction = new Point(0, 0);
-    // facing direction - remains after keys released
-    player.facing = new Point(0, 0);
+    // facing direction - should remain after keys released
+    player.facing = new Point(1, 0);
     player.shotReady = true;
 
     player.graphic = function () {
@@ -417,12 +420,21 @@ var reset = function () {
         //ctx.beginPath();
         var pointer = new Point();
 
-        if (this.direction.x === 0 || this.direction.y === 0) {
-            pointer.x = this.direction.x * (this.radius + 5);
-            pointer.y = this.direction.y * (this.radius + 5);
+        if (!(this.direction.x === 0 && this.direction.y === 0)) {
+            // player can't face "down" on the 2D plane,
+            // so they must have some positive direction to update facing
+            this.facing.x = this.direction.x;
+            this.facing.y = this.direction.y;
+        }
+
+        if (this.facing.x === 0 || this.facing.y === 0) {
+            // just y or just x
+            pointer.x = this.facing.x * (this.radius + 5);
+            pointer.y = this.facing.y * (this.radius + 5);
         } else {
-            pointer.x = (this.direction.x * (this.radius + 5)) * (1 / Math.SQRT2);
-            pointer.y = (this.direction.y * (this.radius + 5)) * (1 / Math.SQRT2);
+            // x and y component are both active
+            pointer.x = (this.facing.x * (this.radius + 5)) * (1 / Math.SQRT2);
+            pointer.y = (this.facing.y * (this.radius + 5)) * (1 / Math.SQRT2);
         }
 
         ctx.moveTo(this.coords.x, this.coords.y);
