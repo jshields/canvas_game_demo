@@ -211,13 +211,15 @@ window.addEventListener('load', function (ev) {
 var player;
 var target;
 var obstacle;
-var score;
+var score = 0;
 
 var gameObjects;
 
 var handlePlayerInput = function (delta) {
     player.direction.x = 0;
     player.direction.y = 0;
+
+    // TODO strafing: lock player facing when alt is held down
 
     // UP
     if (38 in keysDown) {
@@ -244,7 +246,6 @@ var handlePlayerInput = function (delta) {
             '#000', '#000'
         );
 
-        // TODO add player's current speed to bullet
         bullet.speed = 1024;
         bullet.direction = new Point(player.facing.x, player.facing.y);
 
@@ -303,32 +304,37 @@ var updateGameObjects = function (delta) {
 var handleCollisions = function () {
     /*
     var i = gameObjects.length;
+    var obj, otherObjs, other, j;
     while (i--) {
-        var obj = gameObjects[i];
-        var otherObjs = gameObjects.splice(i, 1);
-        var j = otherObjs.length;
+        obj = gameObjects[i];
+        otherObjs = gameObjects.splice(i, 1);
+        j = otherObjs.length;
         while (j--) {
-            var other = otherObjs[j];
+            other = otherObjs[j];
             // if the other object's collision tag is in the object's "collides with" tags
             if (other.collidesWithTags.indexOf(obj.collisionTag) !== -1) {
                 // these two objects matter to each other, check if they collide
                 var source = obj.collisionShape, target = other.collisionShape;
-                // Find a better way to map shapes to their collision functions?
+                // TODO Find a better way to map shapes to their collision functions
+                // order of "object collides with other" VS "other collides with object" doesn't matter,
+                // but the box VS circle args to the collision functions do need to be in the right order
+                var colliding;
                 if (source === collisionShapeOpts.BOX) {
                     if (target === collisionShapeOpts.BOX) {
                         // box box
-                        boxBoxCollisionCheck();
+                        colliding = boxBoxCollisionCheck(source, target);
                     } else if (target === collisionShapeOpts.CIRCLE) {
                         // box circle
-                        boxCircleCollisionCheck();
+                        colliding = boxCircleCollisionCheck(source, target);
                     }
                 } else if (source === collisionShapeOpts.CIRCLE) {
                     if (target === collisionShapeOpts.BOX) {
-                        // box box
-                        boxBoxCollisionCheck();
+                        // circle box
+                        // args are reversed here since target is the box
+                        colliding = boxCircleCollisionCheck(target, source);
                     } else if (target === collisionShapeOpts.CIRCLE) {
-                        // box circle
-                        boxCircleCollisionCheck();
+                        // circle circle
+                        colliding = circleCircleCollisionCheck(source, target);
                     }
                 }
             }
@@ -337,6 +343,7 @@ var handleCollisions = function () {
 
     // TODO create a way to register collision callbacks between two classes
 
+    //
     // player collects good thing
     if (circleCircleCollisionCheck(target, player)) {
         ++score;
@@ -347,6 +354,7 @@ var handleCollisions = function () {
         --score;
         reset();
     }
+    // */
 };
 
 var drawGameObjects = function () {
@@ -397,8 +405,6 @@ var unpause = function () {
 
 // Reset the game when the player catches runs over a target
 var reset = function () {
-    // TODO scoring system
-    score = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Setup player
