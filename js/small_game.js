@@ -159,16 +159,6 @@ Box.prototype.graphic = function () {
     ctx.rect(this.coords.x, this.coords.y, this.width, this.height);
 };
 
-/*
-var Sprite = function () {
-    TODO
-    this.draw = function (ctx) {
-        ctx.drawImage(this.image, this.coords.x, this.coords.y);
-    };
-    return this;
-};
-*/
-
 
 /* Canvas config */
 
@@ -216,21 +206,13 @@ var obstacle;
 var score = 0;
 
 var gameObjects;
+var running;
+var lastTime;
 
 
 var handlePlayerInput = function (delta) {
     player.direction.x = 0;
     player.direction.y = 0;
-
-    /*
-    FIXME Alt / Ctrl keys used for browser commands, preventDefault doesn't stop them
-    Is there an API to ask for control of the keyboard?
-    // strafing: lock player facing when alt is held down
-    player.strafing = false;
-    if ('Alt' in keysDown) {
-        player.strafing = true;
-    }
-    */
 
     // Movement
     if (('ArrowUp' in keysDown) || ('KeyW' in keysDown)) {
@@ -247,7 +229,7 @@ var handlePlayerInput = function (delta) {
     }
 
 
-    // SPACE
+    // Shoot
     if (('Space' in keysDown) && (player.shotReady === true)) {
 
         var bullet = new Circle(
@@ -258,16 +240,15 @@ var handlePlayerInput = function (delta) {
         bullet.speed = 1024;
         bullet.direction = new Point(player.facing.x, player.facing.y);
         bullet.expiredCheck = function () {
-            var ret = false;
             if (
                 (this.coords.x > (canvas.width + bullet.radius)) ||
                 (this.coords.x < -bullet.radius) ||
                 (this.coords.y > (canvas.height + bullet.radius)) ||
                 (this.coords.y < -bullet.radius)
             ) {
-                ret = true;
+                return true;
             }
-            return ret;
+            return false;
         };
         gameObjects.push(bullet);
 
@@ -462,7 +443,7 @@ var reset = function () {
     target.coords = randPointInBounds(canvas, 32);
 
     /* Obstacle setup */
-    obstacle = new Box(null, null, 128, 128, '#000', '#f00');
+    obstacle = new Box(null, null, 96, 96, '#000', '#f00');
     obstacle.coords = randPointInBounds(canvas, 128);
 
     // If objects spawn on top of each other, respawn them
@@ -529,7 +510,7 @@ var main = function () {
 };
 
 // Begin
-var running = true;
-var lastTime = Date.now();
+running = true;
+lastTime = Date.now();
 reset();
 main();
