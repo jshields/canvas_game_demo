@@ -7,3 +7,7 @@ body {
     border: 1px solid #555;
     float: right;
 }
+.footer {
+    position: fixed;
+    bottom: 0;
+}

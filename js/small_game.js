@@ -169,30 +169,12 @@ var Sprite = function () {
 };
 */
 
-/*
-DOM event handling
-*/
 
-// Handle keyboard state tracking
-var keysDown = {};
-document.addEventListener('keydown', function (ev) {
-    keysDown[ev.keyCode] = true;
-});
-document.addEventListener('keyup', function (ev) {
-    delete keysDown[ev.keyCode];
-});
+/* Canvas config */
 
-
-/* Game objects */
-// Create the canvas
 // TODO properly scale canvas to device resolution:
 // https://www.html5rocks.com/en/tutorials/canvas/hidpi/
 // http://stackoverflow.com/a/26154753/3538313
-
-
-//var tileSize = 64;
-//var tileCount = 10;
-//var canvasSize = tileSize * tileCount;
 
 var resolution = new Point(640, 640);
 var canvas = document.createElement('canvas');
@@ -202,12 +184,32 @@ canvas.height = resolution.y;
 // Opaque 2D context without alpha channel greatly improves text rendering
 // http://blogs.adobe.com/webplatform/2014/04/01/new-canvas-features/
 var ctx = canvas.getContext('2d', {'alpha': false});
+/* End Canvas config */
+
+
+// keyboard state tracking
+// Would a switch case be better?
+var keysDown = {};
 
 window.addEventListener('load', function (ev) {
     document.body.appendChild(canvas);
+
+    document.body.addEventListener('keydown', function (ev) {
+        keysDown[ev.code] = true;
+    });
+    document.body.addEventListener('keyup', function (ev) {
+        delete keysDown[ev.code];
+    });
+});
+window.addEventListener('focus', function() {
+    unpause();
+});
+window.addEventListener('blur', function() {
+    pause();
 });
 
 
+/* Global vars */
 var player;
 var target;
 var obstacle;
@@ -215,31 +217,38 @@ var score = 0;
 
 var gameObjects;
 
+
 var handlePlayerInput = function (delta) {
     player.direction.x = 0;
     player.direction.y = 0;
 
-    // TODO strafing: lock player facing when alt is held down
+    /*
+    FIXME Alt / Ctrl keys used for browser commands, preventDefault doesn't stop them
+    Is there an API to ask for control of the keyboard?
+    // strafing: lock player facing when alt is held down
+    player.strafing = false;
+    if ('Alt' in keysDown) {
+        player.strafing = true;
+    }
+    */
 
-    // UP
-    if (38 in keysDown) {
+    // Movement
+    if (('ArrowUp' in keysDown) || ('KeyW' in keysDown)) {
         player.direction.y = -1;
     }
-    // DOWN
-    if (40 in keysDown) {
+    if (('ArrowDown' in keysDown) || ('KeyS' in keysDown)) {
         player.direction.y = 1;
     }
-    // LEFT
-    if (37 in keysDown) {
+    if (('ArrowLeft' in keysDown) || ('KeyA' in keysDown)) {
         player.direction.x = -1;
     }
-    // RIGHT
-    if (39 in keysDown) {
+    if (('ArrowRight' in keysDown) || ('KeyD' in keysDown)) {
         player.direction.x = 1;
     }
 
+
     // SPACE
-    if ((32 in keysDown) && (player.shotReady === true)) {
+    if (('Space' in keysDown) && (player.shotReady === true)) {
 
         var bullet = new Circle(
             player.coords.x, player.coords.y, 8,
@@ -248,16 +257,14 @@ var handlePlayerInput = function (delta) {
 
         bullet.speed = 1024;
         bullet.direction = new Point(player.facing.x, player.facing.y);
-
-        // TODO Is there a better way to delete a specific object?
-        // We will have to manually remove bullets that have been alive too long,
-        // in `update`
-        // FIXME: pausing game expires bullets
-        // remove when off screen instead of using a timer?
-        bullet.timecreated = Date.now();
         bullet.expiredCheck = function () {
             var ret = false;
-            if ((Date.now() - this.timecreated) >= 2000) {
+            if (
+                (this.coords.x > (canvas.width + bullet.radius)) ||
+                (this.coords.x < -bullet.radius) ||
+                (this.coords.y > (canvas.height + bullet.radius)) ||
+                (this.coords.y < -bullet.radius)
+            ) {
                 ret = true;
             }
             return ret;
@@ -290,8 +297,7 @@ var updateGameObjects = function (delta) {
             obj.coords.x += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.x * delta);
             obj.coords.y += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.y * delta);
         }
-        // Expiry
-        //obj.lifetime += deltaTime;
+        // Expiry (remove object from game)
         if (typeof obj.expiredCheck !== 'undefined') {
             if (obj.expiredCheck() === true) {
                 // remove expired objects
@@ -358,7 +364,6 @@ var handleCollisions = function () {
 };
 
 var drawGameObjects = function () {
-    // TODO support layer ordering?
     var i = gameObjects.length;
     while (i--) {
         var obj = gameObjects[i];
@@ -368,7 +373,6 @@ var drawGameObjects = function () {
     }
 };
 var drawUi = function () {
-    // Score
     ctx.fillStyle = '#000';
     ctx.strokeStyle = '#000';
     ctx.font = '18px sans-serif';
@@ -377,24 +381,20 @@ var drawUi = function () {
 
     ctx.fillText('score: ' + score, 16, 16);
 
-    // TODO health bar, RGB function green to red based on HP
-    //ctx.fillStyle = rgbColor();
-    //ctx.strokeStyle = '#000';
+    if (!running) {
+        ctx.fillText('Paused', canvas.width/2, canvas.height/2);
+    }
+
 };
 
 /*
 Game loop
 */
 // Pause and unpause
-window.addEventListener('focus', function() {
-    unpause();
-});
-window.addEventListener('blur', function() {
-    pause();
-});
 var pause = function () {
     //cancelAnimationFrame?
     running = false;
+    keysDown = {};
 };
 var unpause = function () {
     running = true;
@@ -407,7 +407,7 @@ var unpause = function () {
 var reset = function () {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Setup player
+    /* Player setup */
     player = new Circle(
         canvas.width / 2, canvas.height / 2, 32,
         '#000', randColor()
@@ -417,6 +417,7 @@ var reset = function () {
     player.direction = new Point(0, 0);
     // facing direction - should remain after keys released
     player.facing = new Point(1, 0);
+    //player.strafing = false;
     player.shotReady = true;
 
     player.graphic = function () {
@@ -426,12 +427,15 @@ var reset = function () {
         //ctx.beginPath();
         var pointer = new Point();
 
-        if (!(this.direction.x === 0 && this.direction.y === 0)) {
+
+        // TODO changing `facing` should be in update, not draw
+        if (!(this.direction.x === 0 && this.direction.y === 0)) { //&& !this.strafing
             // player can't face "down" on the 2D plane,
-            // so they must have some positive direction to update facing
+            // so they must have some positive direction for facing to be updated
             this.facing.x = this.direction.x;
             this.facing.y = this.direction.y;
         }
+
 
         if (this.facing.x === 0 || this.facing.y === 0) {
             // just y or just x
@@ -450,12 +454,14 @@ var reset = function () {
         );
     };
 
+    /* Target setup */
     target = new Circle(
         null, null, 16,
         '#000', '#0f0'
     );
     target.coords = randPointInBounds(canvas, 32);
 
+    /* Obstacle setup */
     obstacle = new Box(null, null, 128, 128, '#000', '#f00');
     obstacle.coords = randPointInBounds(canvas, 128);
 
@@ -483,12 +489,8 @@ var update = function () {
     var currentTime = Date.now();
     var deltaTime = (currentTime - lastTime) / 1000;
 
-    //document.getElementById('debug').innerText = ;
-
     handlePlayerInput(deltaTime);
-
     updateGameObjects(deltaTime);
-
     handleCollisions();
 
     // Set `lastTime` for the next pass
@@ -508,19 +510,24 @@ var render = function () {
     drawUi();
 };
 // The main game loop
-// TODO in another project: splash screen with instructions
 var main = function () {
+
+    // Pause
     if (!running) {
-        // TODO draw a pause screen
+        // Draw the pause screen
+        render();
+        // Break out of game loop to pause
         return;
     }
 
+    // main game loop's update / draw phases
     update();
     render();
 
     // Call `main` again when the next frame is ready.
     requestAnimationFrame(main);
 };
+
 // Begin
 var running = true;
 var lastTime = Date.now();
