@@ -90,8 +90,6 @@ function blueNoiseCells(canvas, cells, objects) {
     // TODO
 }
 
-
-
 var collisionShapeOpts = {
     BOX: 0,
     CIRCLE: 1
@@ -186,6 +184,19 @@ Box.prototype.graphic = function () {
 };
 
 
+/*
+var Player = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags) {
+    Circle.call(this, x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags);
+}
+
+var Bullet = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags) {
+
+
+    this.expiredCheck
+    this.handleCollision
+}
+*/
+
 /* Canvas config */
 
 // TODO properly scale canvas to device resolution:
@@ -259,7 +270,8 @@ var handlePlayerInput = function (delta) {
 
         var bullet = new Circle(
             player.coords.x, player.coords.y, 8,
-            '#000', '#000'
+            '#000', '#000',
+            'bullet', ['target', 'obstacle']
         );
         // Right now, the bullet is defined each time the player shoots
         // TODO make Bullet constructor
@@ -275,6 +287,26 @@ var handlePlayerInput = function (delta) {
                 return true;
             }
             return false;
+        };
+        bullet.handleCollision = function (other) {
+            switch (other.collisionTag) {
+                case 'target':
+                    console.log('bullet collided with target');
+                    /*
+                    ++score;
+                    reset();
+                    */
+                    break;
+                case 'obstacle':
+                    console.log('bullet collided with obstacle')
+                    /*
+                    --score;
+                    reset();
+                    */
+                    break;
+                default:
+                    console.warn('No collision logic for tagged collision');
+            }
         };
 
         // place the bullet into the game
@@ -319,13 +351,6 @@ var updateGameObjects = function (delta) {
 var handleCollisions = function () {
     // TODO broad phase and narrow phase collision detection
 
-    /*
-    FIXME
-    this checks if "a" collides with "b",
-    but also checks if "b" collides with "a",
-    which is redundant
-    */
-
     var len = gameObjects.length;
     var obj, other, i, j;
     for (i = 0; i < len; i++) {
@@ -345,8 +370,7 @@ var handleCollisions = function () {
                 var source = obj.collider.collisionShape,
                     target = other.collider.collisionShape;
                 // TODO Find a better way to map shapes to their collision functions
-                // order of "object collides with other" VS "other collides with object" doesn't matter,
-                // but the box VS circle args to the collision functions do need to be in the right order
+                // the box VS circle args need to be in the right order
                 var colliding;
                 if (source === collisionShapeOpts.BOX) {
                     if (target === collisionShapeOpts.BOX) {
@@ -496,16 +520,19 @@ var reset = function () {
         }
     };
 
-
     /* Target setup */
     target = new Circle(
         null, null, 16,
-        '#000', '#0f0'
+        '#000', '#0f0',
+        'target', []
     );
     target.coords = randPointInBounds(canvas, 32);
 
     /* Obstacle setup */
-    obstacle = new Box(null, null, 96, 96, '#000', '#f00');
+    obstacle = new Box(
+        null, null, 96, 96, '#000', '#f00',
+        'obstacle', []
+    );
     obstacle.coords = randPointInBounds(canvas, 128);
 
     // If objects spawn on top of each other, respawn them
