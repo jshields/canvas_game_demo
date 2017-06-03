@@ -57,23 +57,6 @@ function boxCircleCollisionCheck(box, circle) {
     // Do a collision check between the closest point and circle
     return pointCircleCollisionCheck(new Point(closestX, closestY), circle)
 }
-// TODO? broad phase and narrow phase collision detection
-var collisionShapeOpts = {
-    BOX: 'BOX',
-    CIRCLE: 'CIRCLE'
-};
-function Collider(collisionShape, collisionTag, collidesWithTags) {
-
-    if (values(collisionShapeOpts).indexOf(collisionShape) === -1) {
-        throw new Error('Invalid Collision Shape: ' + collisionShape);
-    }
-
-    this.collisionShape = collisionShape;
-    this.collisionTag = collisionTag;
-    this.collidesWithTags = collidesWithTags;
-
-    return this;
-}
 
 // Color
 function rgbColor(r, g, b) {
@@ -100,21 +83,52 @@ function randPointInBounds(canvas, padding) {
     var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
     return new Point(randX, randY);
 }
-function blueNoiseCells(canvas, cells) {
+function blueNoiseCells(canvas, cells, objects) {
     // blue noise cells to spawn objects pseudo randomly,
     // while avoiding overlapped spawns.
-    // assume square canvas to simplify things?
+    // square canvas to simplify things?
     // TODO
 }
 
-//var Shape
 
-var GameObject = function (x, y, borderColor, bgColor) {
+
+var collisionShapeOpts = {
+    BOX: 0,
+    CIRCLE: 1
+};
+function Collider(collisionShape, collisionTag, collidesWithTags) {
+
+    if (values(collisionShapeOpts).indexOf(collisionShape) === -1) {
+        throw new Error('Invalid Collision Shape: ' + collisionShape);
+    }
+
+    this.collisionShape = collisionShape;
+    // label describing the type of collider this is
+    // could be "tree", "wall", "enemy1", or anything
+    // IDEA: Allowing multiple tags per object
+    this.collisionTag = collisionTag;
+    // list of labels that this collider collides with
+    this.collidesWithTags = collidesWithTags;
+
+    // IDEA perhaps add this later for collision check optimization
+    // boolean to represent if this collider moves
+    //this.static = isStatic;
+
+    return this;
+}
+
+var GameObject = function (
+            x, y, borderColor, bgColor,
+            collisionShape, collisionTag, collidesWithTags
+        ) {
     this.coords = new Point(x, y);
     this.direction = new Point(0, 0);
     this.speed = 0;
     this.borderColor = borderColor;
     this.bgColor = bgColor;
+    this.collider = new Collider(
+        collisionShape, collisionTag, collidesWithTags
+    );
 
     return this;
 };
@@ -133,8 +147,14 @@ var GameObjectPrototype = GameObject.prototype = {
         ctx.fill();
     }
 };
-var Circle = function (x, y, rad, borderColor, bgColor) {
-    GameObject.call(this, x, y, borderColor, bgColor);
+
+var Circle = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags) {
+    GameObject.call(
+        this, x, y, borderColor, bgColor,
+        collisionShapeOpts.CIRCLE,
+        collisionTag,
+        collidesWithTags
+    );
     this.radius = rad;
 
     return this;
@@ -147,8 +167,14 @@ Circle.prototype.graphic = function () {
         0, 2 * Math.PI
     );
 };
-var Box = function (x, y, w, h, borderColor, bgColor) {
-    GameObject.call(this, x, y, borderColor, bgColor);
+
+var Box = function (x, y, w, h, borderColor, bgColor, collisionTag, collidesWithTags) {
+    GameObject.call(
+        this, x, y, borderColor, bgColor,
+        collisionShapeOpts.BOX,
+        collisionTag,
+        collidesWithTags
+    );
     this.width = w;
     this.height = h;
 
@@ -199,16 +225,15 @@ window.addEventListener('blur', function() {
 });
 
 
-/* Global vars */
+// Global vars
+var gameObjects;
 var player;
 var target;
 var obstacle;
-var score = 0;
 
-var gameObjects;
 var running;
 var lastTime;
-
+var score = 0;
 
 var handlePlayerInput = function (delta) {
     player.direction.x = 0;
@@ -236,7 +261,8 @@ var handlePlayerInput = function (delta) {
             player.coords.x, player.coords.y, 8,
             '#000', '#000'
         );
-
+        // Right now, the bullet is defined each time the player shoots
+        // TODO make Bullet constructor
         bullet.speed = 1024;
         bullet.direction = new Point(player.facing.x, player.facing.y);
         bullet.expiredCheck = function () {
@@ -250,6 +276,8 @@ var handlePlayerInput = function (delta) {
             }
             return false;
         };
+
+        // place the bullet into the game
         gameObjects.push(bullet);
 
         // limit player firing rate
@@ -289,19 +317,33 @@ var updateGameObjects = function (delta) {
 };
 
 var handleCollisions = function () {
+    // TODO broad phase and narrow phase collision detection
+
     /*
-    var i = gameObjects.length;
-    var obj, otherObjs, other, j;
-    while (i--) {
+    FIXME
+    this checks if "a" collides with "b",
+    but also checks if "b" collides with "a",
+    which is redundant
+    */
+
+    var len = gameObjects.length;
+    var obj, other, i, j;
+    for (i = 0; i < len; i++) {
         obj = gameObjects[i];
-        otherObjs = gameObjects.splice(i, 1);
-        j = otherObjs.length;
-        while (j--) {
-            other = otherObjs[j];
+
+        for (j = 0; j < len; j++) {
+            other = gameObjects[j];
+
+            if (obj === other) {
+                // cannot collide with self
+                continue;
+            }
+
             // if the other object's collision tag is in the object's "collides with" tags
-            if (other.collidesWithTags.indexOf(obj.collisionTag) !== -1) {
-                // these two objects matter to each other, check if they collide
-                var source = obj.collisionShape, target = other.collisionShape;
+            if (obj.collidesWithTags.indexOf(other.collisionTag) !== -1) {
+                // obj can collide with other
+                var source = obj.collider.collisionShape,
+                    target = other.collider.collisionShape;
                 // TODO Find a better way to map shapes to their collision functions
                 // order of "object collides with other" VS "other collides with object" doesn't matter,
                 // but the box VS circle args to the collision functions do need to be in the right order
@@ -324,24 +366,16 @@ var handleCollisions = function () {
                         colliding = circleCircleCollisionCheck(source, target);
                     }
                 }
+                if (colliding) {
+                    if (typeof obj.handleCollision !== 'undefined') {
+                        obj.handleCollision(other);
+                    }
+                }
             }
-        }
-    }*/
 
-    // TODO create a way to register collision callbacks between two classes
+        }  // end nested for
+    }  // end for
 
-    //
-    // player collects good thing
-    if (circleCircleCollisionCheck(target, player)) {
-        ++score;
-        reset();
-    }
-    // player hits bad thing
-    if (boxCircleCollisionCheck(obstacle, player)) {
-        --score;
-        reset();
-    }
-    // */
 };
 
 var drawGameObjects = function () {
@@ -388,10 +422,16 @@ var unpause = function () {
 var reset = function () {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    /* Player setup */
+    /*
+    Player setup
+
+    The player is a circle object right now
+    TODO make Player constructor
+    */
     player = new Circle(
         canvas.width / 2, canvas.height / 2, 32,
-        '#000', randColor()
+        '#000', randColor(),
+        'player', ['target', 'obstacle']
     );
     player.speed = 256;
     // movement direction - affects position
@@ -433,7 +473,29 @@ var reset = function () {
             this.coords.x + pointer.x,
             this.coords.y + pointer.y
         );
+    };  // end player graphic
+
+    player.handleCollision = function (other) {
+        switch (other.collisionTag) {
+            case 'target':
+                console.log('player collided with target');
+                /*
+                ++score;
+                reset();
+                */
+                break;
+            case 'obstacle':
+                console.log('player collided with obstacle')
+                /*
+                --score;
+                reset();
+                */
+                break;
+            default:
+                console.warn('No collision logic for tagged collision');
+        }
     };
+
 
     /* Target setup */
     target = new Circle(
