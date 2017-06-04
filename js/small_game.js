@@ -334,7 +334,7 @@ var updateGameObjects = function (delta) {
             // a^2 + b^2 = c^2
             // sqrt(x^2 + y^2) = sqrt(2)
             // Scaling the vector by (1 / c) normalizes the vector
-            // TODO implement a Vector2d class for real?
+            // IDEA implement a Vector2d class for real?
             obj.coords.x += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.x * delta);
             obj.coords.y += ((obj.speed * (1 / Math.SQRT2)) * obj.direction.y * delta);
         }
@@ -349,7 +349,7 @@ var updateGameObjects = function (delta) {
 };
 
 var handleCollisions = function () {
-    // TODO broad phase and narrow phase collision detection
+    // IDEA broad phase and narrow phase collision detection
 
     var len = gameObjects.length;
     var obj, other, i, j;
