@@ -293,12 +293,16 @@ var handlePlayerInput = function (delta) {
                 case 'target':
                     console.log('bullet collided with target');
                     --score;
-                    //reset();
+                    // destroy bullet after it collides
+                    // perhaps this is a bit of a hack
+                    this.expiredCheck = function () {return true;};
+                    softReset();
                     break;
                 case 'obstacle':
                     console.log('bullet collided with obstacle')
                     ++score;
-                    //reset();
+                    this.expiredCheck = function () {return true;};
+                    softReset();
                     break;
                 default:
                     console.warn('No collision logic for tagged collision');
@@ -419,6 +423,7 @@ var drawUi = function () {
     ctx.textBaseline = 'top';
 
     ctx.fillText('score: ' + score, 16, 16);
+    //TODO ctx.fillText('time: ', canvas.width - 96, 16);
 
     if (!running) {
         ctx.fillText('Paused', canvas.width/2, canvas.height/2);
@@ -506,12 +511,12 @@ var reset = function () {
             case 'target':
                 console.log('player collided with target');
                 ++score;
-                //reset();
+                softReset();
                 break;
             case 'obstacle':
                 console.log('player collided with obstacle')
                 --score;
-                //reset();
+                softReset();
                 break;
             default:
                 console.warn('No collision logic for tagged collision');
@@ -549,6 +554,21 @@ var reset = function () {
     // or come up with some respawning system for target and obstacle
     // resetting gameObjects as part of a collision callback breaks things
     gameObjects = [player, target, obstacle];
+};
+
+var softReset = function () {
+    target.coords = randPointInBounds(canvas, 32);
+    obstacle.coords = randPointInBounds(canvas, 128);
+    // If objects spawn on top of each other, respawn them
+    // TODO spawn using blue noise cells instead to solve this problem
+    // FIXME this code is mostly duplicated from `reset`
+    if (boxCircleCollisionCheck(obstacle, target) ||
+        boxCircleCollisionCheck(obstacle, player) ||
+        circleCircleCollisionCheck(target, player)
+        ) {
+        console.warn('bad respawn location, retrying');
+        softReset();
+    }
 };
 
 var update = function () {
