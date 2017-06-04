@@ -367,25 +367,25 @@ var handleCollisions = function () {
             // if the other object's collision tag is in the object's "collides with" tags
             if (obj.collider.collidesWithTags.indexOf(other.collider.collisionTag) !== -1) {
                 // obj can collide with other
-                var sourceShapeType = obj.collider.collisionShape,
-                    targetShapeType = other.collider.collisionShape;
+                var objShapeType = obj.collider.collisionShape,
+                    otherShapeType = other.collider.collisionShape;
                 // TODO Find a better way to map shapes to their collision functions
                 // the box VS circle args need to be in the right order
                 var colliding;
-                if (sourceShapeType === collisionShapeOpts.BOX) {
-                    if (targetShapeType === collisionShapeOpts.BOX) {
+                if (objShapeType === collisionShapeOpts.BOX) {
+                    if (otherShapeType === collisionShapeOpts.BOX) {
                         // box box
                         colliding = boxBoxCollisionCheck(obj, other);
-                    } else if (targetShapeType === collisionShapeOpts.CIRCLE) {
+                    } else if (otherShapeType === collisionShapeOpts.CIRCLE) {
                         // box circle
                         colliding = boxCircleCollisionCheck(obj, other);
                     }
-                } else if (sourceShapeType === collisionShapeOpts.CIRCLE) {
-                    if (targetShapeType === collisionShapeOpts.BOX) {
+                } else if (objShapeType === collisionShapeOpts.CIRCLE) {
+                    if (otherShapeType === collisionShapeOpts.BOX) {
                         // circle box
                         // args are reversed here since target is the box
                         colliding = boxCircleCollisionCheck(other, obj);
-                    } else if (targetShapeType === collisionShapeOpts.CIRCLE) {
+                    } else if (otherShapeType === collisionShapeOpts.CIRCLE) {
                         // circle circle
                         colliding = circleCircleCollisionCheck(obj, other);
                     }
@@ -434,11 +434,13 @@ var pause = function () {
     //cancelAnimationFrame?
     running = false;
     keysDown = {};
+    console.log('paused');
 };
 var unpause = function () {
     running = true;
     // Reset `lastTime` to prevent large delta times from being generated
     lastTime = Date.now();
+    console.log('unpaused');
     main();
 };
 
