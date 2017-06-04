@@ -96,7 +96,7 @@ var collisionShapeOpts = {
 };
 function Collider(collisionShape, collisionTag, collidesWithTags) {
 
-    if (values(collisionShapeOpts).indexOf(collisionShape) === -1) {
+    if (Object.values(collisionShapeOpts).indexOf(collisionShape) === -1) {
         throw new Error('Invalid Collision Shape: ' + collisionShape);
     }
 
@@ -289,7 +289,7 @@ var handlePlayerInput = function (delta) {
             return false;
         };
         bullet.handleCollision = function (other) {
-            switch (other.collisionTag) {
+            switch (other.collider.collisionTag) {
                 case 'target':
                     console.log('bullet collided with target');
                     /*
@@ -365,29 +365,29 @@ var handleCollisions = function () {
             }
 
             // if the other object's collision tag is in the object's "collides with" tags
-            if (obj.collidesWithTags.indexOf(other.collisionTag) !== -1) {
+            if (obj.collider.collidesWithTags.indexOf(other.collider.collisionTag) !== -1) {
                 // obj can collide with other
-                var source = obj.collider.collisionShape,
-                    target = other.collider.collisionShape;
+                var sourceShapeType = obj.collider.collisionShape,
+                    targetShapeType = other.collider.collisionShape;
                 // TODO Find a better way to map shapes to their collision functions
                 // the box VS circle args need to be in the right order
                 var colliding;
-                if (source === collisionShapeOpts.BOX) {
-                    if (target === collisionShapeOpts.BOX) {
+                if (sourceShapeType === collisionShapeOpts.BOX) {
+                    if (targetShapeType === collisionShapeOpts.BOX) {
                         // box box
-                        colliding = boxBoxCollisionCheck(source, target);
-                    } else if (target === collisionShapeOpts.CIRCLE) {
+                        colliding = boxBoxCollisionCheck(obj, other);
+                    } else if (targetShapeType === collisionShapeOpts.CIRCLE) {
                         // box circle
-                        colliding = boxCircleCollisionCheck(source, target);
+                        colliding = boxCircleCollisionCheck(obj, other);
                     }
-                } else if (source === collisionShapeOpts.CIRCLE) {
-                    if (target === collisionShapeOpts.BOX) {
+                } else if (sourceShapeType === collisionShapeOpts.CIRCLE) {
+                    if (targetShapeType === collisionShapeOpts.BOX) {
                         // circle box
                         // args are reversed here since target is the box
-                        colliding = boxCircleCollisionCheck(target, source);
-                    } else if (target === collisionShapeOpts.CIRCLE) {
+                        colliding = boxCircleCollisionCheck(other, obj);
+                    } else if (targetShapeType === collisionShapeOpts.CIRCLE) {
                         // circle circle
-                        colliding = circleCircleCollisionCheck(source, target);
+                        colliding = circleCircleCollisionCheck(obj, other);
                     }
                 }
                 if (colliding) {
@@ -500,7 +500,7 @@ var reset = function () {
     };  // end player graphic
 
     player.handleCollision = function (other) {
-        switch (other.collisionTag) {
+        switch (other.collider.collisionTag) {
             case 'target':
                 console.log('player collided with target');
                 /*
@@ -545,7 +545,7 @@ var reset = function () {
         reset();
     }
 
-    // TODO create some walls that the player can collide with
+    // TODO create some walls that the player can collide with / set edge boundaries
 
     gameObjects = [player, target, obstacle];
 };
@@ -566,7 +566,10 @@ var update = function () {
     // Set `lastTime` for the next pass
     lastTime = currentTime;
 
-    // TODO: prevent high speed objects from skipping through solids between frames
+    /*
+    IDEA: prevent high speed objects from skipping through solids between frames,
+    not currently needed
+    */
 };
 // Draw everything
 var render = function () {
@@ -582,11 +585,9 @@ var render = function () {
 // The main game loop
 var main = function () {
 
-    // Pause
     if (!running) {
-        // Draw the pause screen
+        // Draw the pause text
         render();
-        // Break out of game loop to pause
         return;
     }
 
