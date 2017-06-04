@@ -218,15 +218,14 @@ var ctx = canvas.getContext('2d', {'alpha': false});
 // Would a switch case be better?
 var keysDown = {};
 
+document.addEventListener('keydown', function (ev) {
+    keysDown[ev.code] = true;
+});
+document.addEventListener('keyup', function (ev) {
+    delete keysDown[ev.code];
+});
 window.addEventListener('load', function (ev) {
     document.body.appendChild(canvas);
-
-    document.body.addEventListener('keydown', function (ev) {
-        keysDown[ev.code] = true;
-    });
-    document.body.addEventListener('keyup', function (ev) {
-        delete keysDown[ev.code];
-    });
 });
 window.addEventListener('focus', function() {
     unpause();
@@ -245,6 +244,7 @@ var obstacle;
 var running;
 var lastTime;
 var score = 0;
+var time = 20;
 
 var handlePlayerInput = function (delta) {
     player.direction.x = 0;
@@ -423,10 +423,18 @@ var drawUi = function () {
     ctx.textBaseline = 'top';
 
     ctx.fillText('score: ' + score, 16, 16);
-    //TODO ctx.fillText('time: ', canvas.width - 96, 16);
+    ctx.fillText('time: ' + parseInt(time), canvas.width - 96, 16);
 
+
+    // TODO center the text: these pieces of text are oriented around upleft corner
     if (!running) {
         ctx.fillText('Paused', canvas.width/2, canvas.height/2);
+    }
+    if (time <= 0) {
+        ctx.fillStyle = '#f11';
+        ctx.fillText('Out of time!', canvas.width/2, canvas.height/2);
+        ctx.fillStyle = '#000';
+        ctx.fillText('Final score: ' + score, canvas.width/2, canvas.height/2 + 18);
     }
 
 };
@@ -579,6 +587,7 @@ var update = function () {
     */
     var currentTime = Date.now();
     var deltaTime = (currentTime - lastTime) / 1000;
+    time -= deltaTime;
 
     handlePlayerInput(deltaTime);
     updateGameObjects(deltaTime);
@@ -606,8 +615,7 @@ var render = function () {
 // The main game loop
 var main = function () {
 
-    if (!running) {
-        // Draw the pause text
+    if ((!running) || (time <= 0)) {
         render();
         return;
     }
