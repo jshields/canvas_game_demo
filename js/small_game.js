@@ -279,10 +279,10 @@ var handlePlayerInput = function (delta) {
         bullet.direction = new Point(player.facing.x, player.facing.y);
         bullet.expiredCheck = function () {
             if (
-                (this.coords.x > (canvas.width + bullet.radius)) ||
-                (this.coords.x < -bullet.radius) ||
-                (this.coords.y > (canvas.height + bullet.radius)) ||
-                (this.coords.y < -bullet.radius)
+                (this.coords.x > (canvas.width + this.radius)) ||
+                (this.coords.x < -this.radius) ||
+                (this.coords.y > (canvas.height + this.radius)) ||
+                (this.coords.y < -this.radius)
             ) {
                 return true;
             }
@@ -292,17 +292,13 @@ var handlePlayerInput = function (delta) {
             switch (other.collider.collisionTag) {
                 case 'target':
                     console.log('bullet collided with target');
-                    /*
-                    ++score;
-                    reset();
-                    */
+                    --score;
+                    //reset();
                     break;
                 case 'obstacle':
                     console.log('bullet collided with obstacle')
-                    /*
-                    --score;
-                    reset();
-                    */
+                    ++score;
+                    //reset();
                     break;
                 default:
                     console.warn('No collision logic for tagged collision');
@@ -358,6 +354,10 @@ var handleCollisions = function () {
 
         for (j = 0; j < len; j++) {
             other = gameObjects[j];
+
+            if (other === undefined) {
+                debugger;
+            }
 
             if (obj === other) {
                 // cannot collide with self
@@ -505,17 +505,13 @@ var reset = function () {
         switch (other.collider.collisionTag) {
             case 'target':
                 console.log('player collided with target');
-                /*
                 ++score;
-                reset();
-                */
+                //reset();
                 break;
             case 'obstacle':
                 console.log('player collided with obstacle')
-                /*
                 --score;
-                reset();
-                */
+                //reset();
                 break;
             default:
                 console.warn('No collision logic for tagged collision');
@@ -549,6 +545,9 @@ var reset = function () {
 
     // TODO create some walls that the player can collide with / set edge boundaries
 
+    // TODO reset object position without resetting gameObjects itself,
+    // or come up with some respawning system for target and obstacle
+    // resetting gameObjects as part of a collision callback breaks things
     gameObjects = [player, target, obstacle];
 };
 
