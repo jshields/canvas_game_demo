@@ -431,9 +431,7 @@ var drawUi = function () {
         ctx.fillText('Paused', canvas.width/2, canvas.height/2);
     }
     if (time <= 0) {
-        ctx.fillStyle = '#f11';
         ctx.fillText('Out of time!', canvas.width/2, canvas.height/2);
-        ctx.fillStyle = '#000';
         ctx.fillText('Final score: ' + score, canvas.width/2, canvas.height/2 + 18);
     }
 
