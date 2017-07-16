@@ -1,15 +1,22 @@
 'use strict';
 
+const FLOAT_PRECISION = 4;
 // Calculations
 function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
 }
 function distanceCheck(coords1, coords2) {
     // calculate distance between two Point instances
+    /*
     return Math.sqrt(
         Math.pow(coords1.x - coords2.x, 2) +
         Math.pow(coords1.y - coords2.y, 2)
     );
+    */
+    return Math.hypot(
+        (coords1.x - coords2.x),
+        (coords1.y - coords2.y)
+    ).toPrecision(FLOAT_PRECISION);
 }
 
 // Collision
@@ -91,6 +98,12 @@ function blueNoiseCells(canvas, objects, numCells = objects.length) {
     var cellsPerAxis = parseInt(Math.sqrt(numCells));
     var cellPxWidth = canvas.width / cellsPerAxis;
 
+    var sampleObjectWidth = objects[0].width;
+    if (sampleObjectWidth > cellPxWidth) {
+        console.error('Object type to spawn larger than cell');
+    }
+    var cellPadding = sampleObjectWidth / 4;
+
     // store top left corner of each cell
     var cells = [];
     for (var i = 0; i < cellsPerAxis; i++) {
@@ -110,23 +123,38 @@ function blueNoiseCells(canvas, objects, numCells = objects.length) {
     // E.g. 4 cells, but 2 objects
     // randomly map objects to cells they will spawn in?
 
-    var objectsToCells = new Map();
-
-    objects.forEach(function(obj, index) {
-
-        var cellForObj = cells[index];
-        // TODO grab a random available cell for this object
-
-
-        var minX = cellForObj.x;
-        var maxX = minX + cellPxWidth;
-        var minY = cellForObj.y
-        var maxY = minY + cellPxWidth;
-
-        // debug:
-        gameObjects.push(new Box(minX, minY, cellPxWidth, cellPxWidth, 'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []));
-
+    var cellIndsAvailable = cells.map(function (cell, index) {
+        return index;
     });
+    var objectsToCellsArr = objects.map(function (obj, index) {
+        debugger;
+        var randomCellIndex = cellIndsAvailable[Math.floor(Math.random() * cellIndsAvailable.length)];
+        cellIndsAvailable.splice(randomCellIndex, 1);
+        return [index, randomCellIndex];
+    });
+    var objectsToCells = new Map(objectsToCellsArr);
+
+    // debug:
+    for (var i = 0; i < numCells; i++) {
+        var cell = cells[i];
+
+        var minX = cell.x;
+        //var maxX = minX + cellPxWidth;
+        var minY = cell.y
+        //var maxY = minY + cellPxWidth;
+
+        var paddedMinX = minX + cellPadding;
+        var paddedMinY = minY + cellPadding;
+
+        gameObjects.push(new Box(minX, minY, cellPxWidth, cellPxWidth, 'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []));
+        gameObjects.push(
+            new Box(
+                paddedMinX, paddedMinY, cellPxWidth - cellPadding * 2, cellPxWidth - cellPadding * 2,
+                'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []
+            )
+        );
+
+    };
 
 }
 
@@ -194,6 +222,7 @@ var Circle = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWi
         collidesWithTags
     );
     this.radius = rad;
+    this.diameter = this.width = this.height = rad * 2;
 
     return this;
 };
