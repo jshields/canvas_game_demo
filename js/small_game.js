@@ -83,11 +83,51 @@ function randPointInBounds(canvas, padding) {
     var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
     return new Point(randX, randY);
 }
-function blueNoiseCells(canvas, cells, objects) {
+function blueNoiseCells(canvas, objects, numCells = objects.length) {
     // blue noise cells to spawn objects pseudo randomly,
     // while avoiding overlapped spawns.
-    // square canvas to simplify things?
-    // TODO
+    // This function currently assumes a square canvas (width === height)
+
+    var cellsPerAxis = parseInt(Math.sqrt(numCells));
+    var cellPxWidth = canvas.width / cellsPerAxis;
+
+    // store top left corner of each cell
+    var cells = [];
+    for (var i = 0; i < cellsPerAxis; i++) {
+        for (var j = 0; j < cellsPerAxis; j++) {
+            cells.push(new Point(i * cellPxWidth, j * cellPxWidth));
+        }
+    }
+    if (cells.length !== numCells) {
+        console.error(
+            'Actual number of cells (' + cells.length + ') ' +
+            'not equal to requested (' + numCells + '), ' +
+            'choose a number whose square root is a whole number?'
+        );
+    }
+
+    // TODO allow there to be more cells than objects
+    // E.g. 4 cells, but 2 objects
+    // randomly map objects to cells they will spawn in?
+
+    var objectsToCells = new Map();
+
+    objects.forEach(function(obj, index) {
+
+        var cellForObj = cells[index];
+        // TODO grab a random available cell for this object
+
+
+        var minX = cellForObj.x;
+        var maxX = minX + cellPxWidth;
+        var minY = cellForObj.y
+        var maxY = minY + cellPxWidth;
+
+        // debug:
+        gameObjects.push(new Box(minX, minY, cellPxWidth, cellPxWidth, 'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []));
+
+    });
+
 }
 
 var collisionShapeOpts = {
@@ -236,7 +276,7 @@ window.addEventListener('blur', function() {
 
 
 // Global vars
-var gameObjects;
+var gameObjects = [];
 var player;
 var target;
 var obstacle;
@@ -244,7 +284,7 @@ var obstacle;
 var running;
 var lastTime;
 var score = 0;
-var time = 20;
+var time = 999;  // = 20;
 
 var handlePlayerInput = function (delta) {
     player.direction.x = 0;
@@ -263,7 +303,6 @@ var handlePlayerInput = function (delta) {
     if (('ArrowRight' in keysDown) || ('KeyD' in keysDown)) {
         player.direction.x = 1;
     }
-
 
     // Shoot
     if (('Space' in keysDown) && (player.shotReady === true)) {
@@ -544,6 +583,8 @@ var reset = function () {
     );
     obstacle.coords = randPointInBounds(canvas, 128);
 
+
+
     // If objects spawn on top of each other, respawn them
     // TODO spawn using blue noise cells instead to solve this problem
     if (boxCircleCollisionCheck(obstacle, target) ||
@@ -554,12 +595,11 @@ var reset = function () {
         reset();
     }
 
-    // TODO create some walls that the player can collide with / set edge boundaries
+    blueNoiseCells(canvas, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+    //blueNoiseCells(canvas, [target, obstacle], 4);
 
-    // TODO reset object position without resetting gameObjects itself,
-    // or come up with some respawning system for target and obstacle
-    // resetting gameObjects as part of a collision callback breaks things
-    gameObjects = [player, target, obstacle];
+
+    gameObjects = gameObjects.concat([player, target, obstacle]);
 };
 
 var softReset = function () {
