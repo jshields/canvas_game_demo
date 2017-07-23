@@ -1,5 +1,6 @@
 'use strict';
 
+const DEBUG = true;
 const FLOAT_PRECISION = 4;
 // Calculations
 function clamp(val, min, max) {
@@ -102,7 +103,7 @@ function blueNoiseCells(canvas, objects, numCells = objects.length) {
     if (sampleObjectWidth > cellPxWidth) {
         console.error('Object type to spawn larger than cell');
     }
-    var cellPadding = sampleObjectWidth / 4;
+    var cellPadding = cellPxWidth / 4; //sampleObjectWidth / 4;
 
     // store top left corner of each cell
     var cells = [];
@@ -127,34 +128,40 @@ function blueNoiseCells(canvas, objects, numCells = objects.length) {
         return index;
     });
     var objectsToCellsArr = objects.map(function (obj, index) {
-        debugger;
+        //debugger;
         var randomCellIndex = cellIndsAvailable[Math.floor(Math.random() * cellIndsAvailable.length)];
         cellIndsAvailable.splice(randomCellIndex, 1);
         return [index, randomCellIndex];
     });
     var objectsToCells = new Map(objectsToCellsArr);
 
-    // debug:
-    for (var i = 0; i < numCells; i++) {
-        var cell = cells[i];
+    // for each object, set x and y in bounds of cell with padding
 
-        var minX = cell.x;
-        //var maxX = minX + cellPxWidth;
-        var minY = cell.y
-        //var maxY = minY + cellPxWidth;
 
-        var paddedMinX = minX + cellPadding;
-        var paddedMinY = minY + cellPadding;
+    // debugging grid
+    if (DEBUG) {
+        for (var i = 0; i < numCells; i++) {
+            var cell = cells[i];
 
-        gameObjects.push(new Box(minX, minY, cellPxWidth, cellPxWidth, 'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []));
-        gameObjects.push(
-            new Box(
-                paddedMinX, paddedMinY, cellPxWidth - cellPadding * 2, cellPxWidth - cellPadding * 2,
-                'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []
-            )
-        );
+            var minX = cell.x;
+            //var maxX = minX + cellPxWidth;
+            var minY = cell.y
+            //var maxY = minY + cellPxWidth;
 
-    };
+            var paddedMinX = minX + cellPadding;
+            var paddedMinY = minY + cellPadding;
+
+            var paddingPerCell = cellPxWidth - cellPadding * 2;
+            gameObjects.push(new Box(minX, minY, cellPxWidth, cellPxWidth, 'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []));
+            gameObjects.push(
+                new Box(
+                    paddedMinX, paddedMinY, paddingPerCell, paddingPerCell,
+                    'rgba(20, 50, 20, 0.8)', 'rgba(0, 50, 0, 0.3)', '', []
+                )
+            );
+
+        }
+    }
 
 }
 
@@ -427,8 +434,8 @@ var handleCollisions = function () {
         for (j = 0; j < len; j++) {
             other = gameObjects[j];
 
-            if (other === undefined) {
-                debugger;
+            if (other == null) {
+                console.error('Expected game object');
             }
 
             if (obj === other) {
@@ -624,7 +631,14 @@ var reset = function () {
         reset();
     }
 
-    blueNoiseCells(canvas, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+    if (DEBUG) {
+
+        blueNoiseCells(canvas, [
+            //new Box()
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+        ]);
+    }
+
     //blueNoiseCells(canvas, [target, obstacle], 4);
 
 
