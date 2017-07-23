@@ -84,46 +84,59 @@ var Point = function (x, y) {
     this.y = y;
     return this;
 };
-function randPointInBounds(canvas, padding) {
-    // random canvas coords, padding to prevent partial offscreen rendering
-    // more or less white noise coords
-    var randX = (padding + (Math.random() * (canvas.width - (2 * padding))));
-    var randY = (padding + (Math.random() * (canvas.height - (2 * padding))));
+function randPointInBounds(width, height, padding = 0) {
+    // random coords, with optional padding
+    var randX = (padding + (Math.random() * (width - (2 * padding))));
+    var randY = (padding + (Math.random() * (height - (2 * padding))));
     return new Point(randX, randY);
 }
+function randPointInCanvasBounds(canvas, padding) {
+    // random canvas coords, padding to prevent partial offscreen rendering
+    // more or less white noise coords
+    return randPointInBounds(canvas.width, canvas.height, padding);
+}
 function blueNoiseCells(canvas, objects, numCells = objects.length) {
-    // blue noise cells to spawn objects pseudo randomly,
-    // while avoiding overlapped spawns.
-    // This function currently assumes a square canvas (width === height)
-
+    /*
+    blue noise cells to spawn objects pseudo randomly,
+    while avoiding overlapped spawns.
+    This function currently assumes a square canvas (width === height)
+    */
     var cellsPerAxis = parseInt(Math.sqrt(numCells));
-    var cellPxWidth = canvas.width / cellsPerAxis;
-
-    var sampleObjectWidth = objects[0].width;
-    if (sampleObjectWidth > cellPxWidth) {
-        console.error('Object type to spawn larger than cell');
-    }
-    var cellPadding = cellPxWidth / 4; //sampleObjectWidth / 4;
+    var cellWidth = canvas.width / cellsPerAxis;
+    var cellPadding = cellWidth / 4;
+    var cellPaddedWidth = cellWidth - cellPadding * 2;
 
     // store top left corner of each cell
     var cells = [];
     for (var i = 0; i < cellsPerAxis; i++) {
         for (var j = 0; j < cellsPerAxis; j++) {
-            cells.push(new Point(i * cellPxWidth, j * cellPxWidth));
+            cells.push(new Point(i * cellWidth, j * cellWidth));
         }
     }
-    if (cells.length !== numCells) {
-        console.error(
-            'Actual number of cells (' + cells.length + ') ' +
-            'not equal to requested (' + numCells + '), ' +
-            'choose a number whose square root is a whole number?'
-        );
+
+    if (DEBUG) {
+        for (var i = 0; i < objects.length; i++) {
+            var sampleObjectWidth = objects[i].width;
+            if (sampleObjectWidth > cellPaddedWidth) {
+                console.error('Object to spawn larger than padded cell spawn area');
+            }
+        }
+        if (objects.length > numCells) {
+            console.error(
+                'Too many objects. There can be more cells than objects, ' +
+                'but not more objects than cells.'
+            );
+        }
+        if (cells.length !== numCells) {
+            console.error(
+                'Actual number of cells (' + cells.length + ') ' +
+                'not equal to requested (' + numCells + '), ' +
+                'choose a number whose square root is a whole number?'
+            );
+        }
     }
 
-    // TODO allow there to be more cells than objects
-    // E.g. 4 cells, but 2 objects
-    // randomly map objects to cells they will spawn in?
-
+    // randomly map objects to cells they will spawn in
     var cellIndsAvailable = cells.map(function (cell, index) {
         return index;
     });
@@ -136,7 +149,10 @@ function blueNoiseCells(canvas, objects, numCells = objects.length) {
     var objectsToCells = new Map(objectsToCellsArr);
 
     // for each object, set x and y in bounds of cell with padding
-
+    for (var i = 0; i < objects.length; i++) {
+        // NOTE: using width value as height since cells are square
+        objects[i].coords = randPointInBounds(cellWidth, cellWidth, cellPadding);
+    }
 
     // debugging grid
     if (DEBUG) {
@@ -144,18 +160,16 @@ function blueNoiseCells(canvas, objects, numCells = objects.length) {
             var cell = cells[i];
 
             var minX = cell.x;
-            //var maxX = minX + cellPxWidth;
+            //var maxX = minX + cellWidth;
             var minY = cell.y
-            //var maxY = minY + cellPxWidth;
+            //var maxY = minY + cellWidth;
 
             var paddedMinX = minX + cellPadding;
             var paddedMinY = minY + cellPadding;
-
-            var paddingPerCell = cellPxWidth - cellPadding * 2;
-            gameObjects.push(new Box(minX, minY, cellPxWidth, cellPxWidth, 'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []));
+            gameObjects.push(new Box(minX, minY, cellWidth, cellWidth, 'rgba(50, 20, 20, 0.8)', 'rgba(50, 0, 0, 0.3)', '', []));
             gameObjects.push(
                 new Box(
-                    paddedMinX, paddedMinY, paddingPerCell, paddingPerCell,
+                    paddedMinX, paddedMinY, cellPaddedWidth, cellPaddedWidth,
                     'rgba(20, 50, 20, 0.8)', 'rgba(0, 50, 0, 0.3)', '', []
                 )
             );
@@ -264,10 +278,7 @@ Box.prototype.graphic = function () {
 var Player = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags) {
     Circle.call(this, x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags);
 }
-
 var Bullet = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags) {
-
-
     this.expiredCheck
     this.handleCollision
 }
@@ -371,13 +382,13 @@ var handlePlayerInput = function (delta) {
                     // destroy bullet after it collides
                     // perhaps this is a bit of a hack
                     this.expiredCheck = function () {return true;};
-                    softReset();
+                    spawnObjectsDefault();
                     break;
                 case 'obstacle':
                     console.log('bullet collided with obstacle')
                     ++score;
                     this.expiredCheck = function () {return true;};
-                    softReset();
+                    spawnObjectsDefault();
                     break;
                 default:
                     console.warn('No collision logic for tagged collision');
@@ -500,8 +511,7 @@ var drawUi = function () {
     ctx.fillText('score: ' + score, 16, 16);
     ctx.fillText('time: ' + parseInt(time), canvas.width - 96, 16);
 
-
-    // TODO center the text: these pieces of text are oriented around upleft corner
+    // TODO center the text. They draw from their upleft corner, but that corner is in middle of canvas
     if (!running) {
         ctx.fillText('Paused', canvas.width/2, canvas.height/2);
     }
@@ -528,6 +538,31 @@ var unpause = function () {
     lastTime = Date.now();
     console.log('unpaused');
     main();
+};
+
+var spawnObjects = function (objs, numCells) {
+    // wrapper method
+
+    /*
+    target.coords = randPointInCanvasBounds(canvas, 32);
+    obstacle.coords = randPointInCanvasBounds(canvas, 128);
+    */
+    blueNoiseCells(canvas, objs, numCells);
+
+    gameObjects = gameObjects.concat(objs);
+
+    if (DEBUG) {
+        blueNoiseCells(canvas, [
+            //new Box()
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+        ]);
+
+        if (boxCircleCollisionCheck(obstacle, target) ||
+                boxCircleCollisionCheck(obstacle, player) ||
+                circleCircleCollisionCheck(target, player)) {
+            console.error('bad spawn location');
+        }
+    }
 };
 
 // Reset the game when the player catches runs over a target
@@ -560,7 +595,6 @@ var reset = function () {
         //ctx.beginPath();
         var pointer = new Point();
 
-
         // TODO changing `facing` should be in update, not draw
         if (!(this.direction.x === 0 && this.direction.y === 0)) { //&& !this.strafing
             // player can't face "down" on the 2D plane,
@@ -592,12 +626,12 @@ var reset = function () {
             case 'target':
                 console.log('player collided with target');
                 ++score;
-                softReset();
+                spawnObjectsDefault();
                 break;
             case 'obstacle':
                 console.log('player collided with obstacle')
                 --score;
-                softReset();
+                spawnObjectsDefault();
                 break;
             default:
                 console.warn('No collision logic for tagged collision');
@@ -610,54 +644,18 @@ var reset = function () {
         '#000', '#0f0',
         'target', []
     );
-    target.coords = randPointInBounds(canvas, 32);
 
     /* Obstacle setup */
     obstacle = new Box(
         null, null, 96, 96, '#000', '#f00',
         'obstacle', []
     );
-    obstacle.coords = randPointInBounds(canvas, 128);
 
+    // TODO is there a way to make sure objects don't respawn on player cell?
+    // keep track of player cell and remove it from possible spawn cells?
+    var spawnObjectsDefault = spawnObjects.bind([target, obstacle], 9);
+    spawnObjectsDefault();
 
-
-    // If objects spawn on top of each other, respawn them
-    // TODO spawn using blue noise cells instead to solve this problem
-    if (boxCircleCollisionCheck(obstacle, target) ||
-        boxCircleCollisionCheck(obstacle, player) ||
-        circleCircleCollisionCheck(target, player)
-        ) {
-        console.warn('bad spawn location, retrying');
-        reset();
-    }
-
-    if (DEBUG) {
-
-        blueNoiseCells(canvas, [
-            //new Box()
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-        ]);
-    }
-
-    //blueNoiseCells(canvas, [target, obstacle], 4);
-
-
-    gameObjects = gameObjects.concat([player, target, obstacle]);
-};
-
-var softReset = function () {
-    target.coords = randPointInBounds(canvas, 32);
-    obstacle.coords = randPointInBounds(canvas, 128);
-    // If objects spawn on top of each other, respawn them
-    // TODO spawn using blue noise cells instead to solve this problem
-    // FIXME this code is mostly duplicated from `reset`
-    if (boxCircleCollisionCheck(obstacle, target) ||
-        boxCircleCollisionCheck(obstacle, player) ||
-        circleCircleCollisionCheck(target, player)
-        ) {
-        console.warn('bad respawn location, retrying');
-        softReset();
-    }
 };
 
 var update = function () {
