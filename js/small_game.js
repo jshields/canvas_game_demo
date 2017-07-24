@@ -355,8 +355,8 @@ var handleCollisions = function () {
         for (j = 0; j < len; j++) {
             other = gameObjects[j];
 
-            if (other === undefined) {
-                debugger;
+            if (other == null) {
+                console.error('Expected other object');
             }
 
             if (obj === other) {
