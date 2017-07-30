@@ -6,14 +6,10 @@ const FLOAT_PRECISION = 4;
 function clamp(val, min, max) {
     return val < min ? min : val > max ? max : val;
 }
+
+var FLOAT_PRECISION = 4;
 function distanceCheck(coords1, coords2) {
     // calculate distance between two Point instances
-    /*
-    return Math.sqrt(
-        Math.pow(coords1.x - coords2.x, 2) +
-        Math.pow(coords1.y - coords2.y, 2)
-    );
-    */
     return Math.hypot(
         (coords1.x - coords2.x),
         (coords1.y - coords2.y)
@@ -95,6 +91,7 @@ function randPointInCanvasBounds(canvas, padding) {
     // more or less white noise coords
     return randPointInBounds(canvas.width, canvas.height, padding);
 }
+
 function blueNoiseCells(canvas, objects, numCells = objects.length) {
     /*
     blue noise cells to spawn objects pseudo randomly,
@@ -383,12 +380,14 @@ var handlePlayerInput = function (delta) {
                     // perhaps this is a bit of a hack
                     this.expiredCheck = function () {return true;};
                     spawnObjectsDefault();
+                    //respawnObjects();
                     break;
                 case 'obstacle':
                     console.log('bullet collided with obstacle')
                     ++score;
                     this.expiredCheck = function () {return true;};
                     spawnObjectsDefault();
+                    //respawnObjects();
                     break;
                 default:
                     console.warn('No collision logic for tagged collision');
@@ -446,7 +445,7 @@ var handleCollisions = function () {
             other = gameObjects[j];
 
             if (other == null) {
-                console.error('Expected game object');
+                console.error('Expected other object');
             }
 
             if (obj === other) {
@@ -627,11 +626,13 @@ var reset = function () {
                 console.log('player collided with target');
                 ++score;
                 spawnObjectsDefault();
+                //respawnObjects();
                 break;
             case 'obstacle':
                 console.log('player collided with obstacle')
                 --score;
                 spawnObjectsDefault();
+                //respawnObjects();
                 break;
             default:
                 console.warn('No collision logic for tagged collision');
@@ -651,11 +652,30 @@ var reset = function () {
         'obstacle', []
     );
 
+
     // TODO is there a way to make sure objects don't respawn on player cell?
     // keep track of player cell and remove it from possible spawn cells?
     var spawnObjectsDefault = spawnObjects.bind([target, obstacle], 9);
     spawnObjectsDefault();
 
+    // set the initial object positions and push them into the game space
+    //respawnObjects();
+
+    gameObjects = gameObjects.concat([player, target, obstacle]);
+};
+
+var respawnObjects = function () {
+    target.coords = randPointInBounds(canvas, 32);
+    obstacle.coords = randPointInBounds(canvas, 128);
+    // If objects spawn on top of each other, respawn them
+    // IDEA spawn using blue noise cells instead to solve this problem
+    if (boxCircleCollisionCheck(obstacle, target) ||
+        boxCircleCollisionCheck(obstacle, player) ||
+        circleCircleCollisionCheck(target, player)
+        ) {
+        console.warn('bad respawn location, retrying');
+        respawnObjects();
+    }
 };
 
 var update = function () {
