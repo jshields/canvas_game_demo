@@ -1,19 +1,41 @@
 body {
     color: #fff;
-    background-color: #000;
+    background-color: #222;
     font-family: Helvetica, Arial, sans-serif;
     font-size: 1.25em;
-    padding: 0.5em;
-    margin: 0.5em;
+    padding: 0;
+    margin: 0;
+}
+
+.title {
+    color: #eee;
+    text-align: center;
+}
+
+#canvas-wrap {
+    width: 100%;
+}
+#canvas-wrap canvas {
+    display: block;
+    margin: 0 auto;
 }
 
 .instructions {
-    border: 0.5em solid #555;
-    float: right;
-    padding: 1em;
+    /*
+    TODO make responsive
+    */
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    width: 25%;
+    max-width: 300px;
 }
 
 .footer {
     position: fixed;
-    bottom: 0;
+    bottom: 1em;
+    left: 1em;
+}
+.footer a {
+    color: #22e;
 }

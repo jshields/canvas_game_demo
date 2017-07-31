@@ -184,10 +184,7 @@ Box.prototype.graphic = function () {
 var Player = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags) {
     Circle.call(this, x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags);
 }
-
 var Bullet = function (x, y, rad, borderColor, bgColor, collisionTag, collidesWithTags) {
-
-
     this.expiredCheck
     this.handleCollision
 }
@@ -207,8 +204,10 @@ canvas.height = resolution.y;
 // Opaque 2D context without alpha channel greatly improves text rendering
 // http://blogs.adobe.com/webplatform/2014/04/01/new-canvas-features/
 var ctx = canvas.getContext('2d', {'alpha': false});
+window.addEventListener('load', function (ev) {
+    document.getElementById('canvas-wrap').appendChild(canvas);
+});
 /* End Canvas config */
-
 
 // keyboard state tracking
 // Would a switch case be better?
@@ -220,9 +219,7 @@ document.addEventListener('keydown', function (ev) {
 document.addEventListener('keyup', function (ev) {
     delete keysDown[ev.code];
 });
-window.addEventListener('load', function (ev) {
-    document.body.appendChild(canvas);
-});
+
 window.addEventListener('focus', function() {
     unpause();
 });
